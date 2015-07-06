@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="pref_lang_entries">
+        <item>Italy</item>
+        <item>United States</item>
+        <item>United Kingdom</item>
+    </string-array>
+
+    <string-array name="pref_lang_entryValues">
+        <item>IT</item>
+        <item>US</item>
+        <item>UK</item>
+    </string-array>
+
+</resources>

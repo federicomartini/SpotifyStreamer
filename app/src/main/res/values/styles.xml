@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="AppTheme" parent="AppTheme.Base"/>
+
+    <style name="AppTheme.Base" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryDark">@color/colorDarkPrimary</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowBackground">@color/colorTextIcons</item>
+        <item name="android:textColorPrimary">@color/colorTextIcons</item>
+        <item name="windowActionBar">false</item>
+        <item name="android:actionMenuTextColor">@color/colorPrimaryText</item>
+        <item name="android:textColorSecondary">@color/colorPrimaryText</item>
+    </style>
+
+    <style name="ListView" parent="AppTheme.Base">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">match_parent</item>
+        <item name="android:divider">@color/colorDivider</item>
+        <item name="android:dividerHeight">@dimen/listview_divider_height</item>
+    </style>
+
+    <style name="PrimaryTextListView" parent="AppTheme.Base">
+        <item name="android:textColor">@color/colorPrimaryText</item>
+    </style>
+
+    <style name="SecondaryTextListView" parent="AppTheme.Base">
+        <item name="android:textColor">@color/colorSecondaryText</item>
+    </style>
+
+    <style name="EditTextSearch" parent="AppTheme.Base">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">match_parent</item>
+        <item name="android:layout_gravity">center_vertical</item>
+        <item name="android:inputType">text</item>
+        <item name="android:singleLine">true</item>
+        <item name="android:hint">@string/searchview_query_hint</item>
+        <item name="android:textColor">@color/colorPrimary</item>
+        <item name="android:textSize">@dimen/abc_dialog_padding_top_material</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:gravity">top</item>
+        <item name="android:imeOptions">actionSearch</item>
+    </style>
+
+    <style name="ToolBarPopupMenu" parent="ThemeOverlay.AppCompat.ActionBar">
+        <item name="android:colorBackground">@color/colorTextIcons</item>
+        <item name="android:textColor">@color/colorPrimaryText</item>
+    </style>
+
+    <style name="Toolbar" parent="AppTheme.Base">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:background">?attr/colorPrimary</item>
+        <item name="android:gravity">start</item>
+        <item name="android:layout_gravity">start</item>
+        <item name="android:minHeight">?attr/actionBarSize</item>
+    </style>
+
+    <style name="FragmentMainTextInputLayout" parent="AppTheme.Base">
+        <item name="android:textColor">@color/colorPrimary</item>
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">match_parent</item>
+        <item name="android:layout_marginBottom">@dimen/fragment_main_text_input_layout_margin_bottom</item>
+        <item name="android:layout_marginTop">@dimen/fragment_main_text_input_layout_margin_top</item>
+        <item name="android:layout_marginRight">@dimen/fragment_main_text_input_layout_margin_right</item>
+    </style>
+
+    <style name="ButtonClearText" parent="AppTheme.Base">
+        <item name="android:layout_width">@dimen/button_clear_text_width</item>
+        <item name="android:layout_height">@dimen/button_clear_text_height</item>
+        <item name="android:layout_gravity">end|center_vertical</item>
+        <item name="android:background">@android:drawable/ic_notification_clear_all</item>
+        <item name="android:layout_centerVertical">true</item>
+        <item name="android:layout_alignParentRight">true</item>
+        <item name="android:layout_marginRight">@dimen/button_clear_text_margin_right</item>
+    </style>
+
+    <style name="ImageViewBackgorundFragmentMain" parent="AppTheme.Base">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:src">@drawable/spotify_red_opacity10</item>
+        <item name="android:contentDescription">@string/fragment_main_image_view_spotify_background</item>
+    </style>
+
+    <style name="FrameLayoutTransparentBlack" parent="AppTheme.Base">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">match_parent</item>
+        <item name="android:background">@color/colorFrameLayoutBackground</item>
+    </style>
+
+    <style name="TextViewTopTenTitle" parent="AppTheme.Base">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textSize">@dimen/textview_top_title_topten_text_size</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">@color/colorTextIcons</item>
+
+    </style>
+
+
+</resources>
+
