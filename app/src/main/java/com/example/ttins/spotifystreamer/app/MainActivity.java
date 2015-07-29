@@ -1,6 +1,10 @@
 package com.example.ttins.spotifystreamer.app;
 
+import android.app.Activity;
+import android.app.Fragment;
+import android.app.FragmentManager;
 import android.content.Intent;
+import android.net.Uri;
 import android.preference.PreferenceManager;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
@@ -8,8 +12,40 @@ import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
 
+import com.example.ttins.spotifystreamer.app.utils.MyArtist;
+import com.example.ttins.spotifystreamer.app.utils.TrackItemList;
 
-public class MainActivity extends ActionBarActivity {
+import java.util.ArrayList;
+
+
+public class MainActivity extends ActionBarActivity implements MainActivityFragment.OnArtistSelectedListener, TopTenFragment.OnFragmentInteractionListener {
+
+    private boolean mTwoPane;
+    Fragment mTopTenFragment;
+
+    @Override
+    public void onFragmentInteraction(Uri uri){
+
+    }
+
+    @Override
+    public void onArtistSelected(MyArtist artist, ArrayList<TrackItemList> tracks) {
+        //TODO: Manage the artist selection behavior
+        if (mTwoPane){
+            mTopTenFragment = new TopTenFragment();
+            Bundle argsBundle = new Bundle();
+            argsBundle.putString("ARG_ARTIST_NAME", artist.name);
+            argsBundle.putString("ARG_ARTIST_IMAGE", artist.image);
+            argsBundle.putParcelableArrayList("ARG_TOP_TEN_LIST", tracks);
+
+            mTopTenFragment.setArguments(argsBundle);
+
+            getFragmentManager().beginTransaction().replace(R.id.topten_container, mTopTenFragment).commit();
+
+        } else {
+            startActivity(makeTopTenIntent(artist, tracks));
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -20,6 +56,10 @@ public class MainActivity extends ActionBarActivity {
         setToolbar(toolbar);
 
         PreferenceManager.setDefaultValues(getApplicationContext(), R.xml.preference_activity, false);
+
+        if (findViewById(R.id.topten_container) != null) {
+            mTwoPane = true;
+        }
 
     }
 
@@ -61,6 +101,16 @@ public class MainActivity extends ActionBarActivity {
 
         toolbar.setLogo(R.drawable.spotify_icon_36);
         return true;
+    }
+
+    /* Create intent for TopTenActivity */
+    private Intent makeTopTenIntent(MyArtist artist, ArrayList<TrackItemList> tracks) {
+        Intent intent = new Intent(this, TopTenActivity.class);
+        intent.putExtra("INTENT_ARTIST_NAME", artist.name);
+        intent.putExtra("INTENT_ARTIST_IMAGE", artist.image);
+        intent.putParcelableArrayListExtra("TOP_TEN_LIST", tracks);
+
+        return intent;
     }
 
 }

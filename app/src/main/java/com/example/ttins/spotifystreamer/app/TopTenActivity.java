@@ -1,50 +1,36 @@
 package com.example.ttins.spotifystreamer.app;
 
 
+import android.app.FragmentManager;
+import android.app.FragmentTransaction;
 import android.content.Intent;
-import android.graphics.Bitmap;
-import android.graphics.Canvas;
-import android.graphics.drawable.BitmapDrawable;
-import android.graphics.drawable.Drawable;
-import android.os.Build;
+import android.net.Uri;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
+import android.app.Fragment;
 import android.support.v7.app.ActionBarActivity;
 import android.support.v7.widget.Toolbar;
-import android.support.v8.renderscript.Allocation;
-import android.support.v8.renderscript.Element;
-import android.support.v8.renderscript.RenderScript;
-import android.support.v8.renderscript.ScriptIntrinsicBlur;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.Window;
-import android.widget.ImageView;
-import android.widget.ListView;
-import android.widget.RelativeLayout;
-import android.widget.TextView;
-
-import com.example.ttins.spotifystreamer.app.utils.RoundImage;
-import com.example.ttins.spotifystreamer.app.utils.TopTenListAdapter;
 import com.example.ttins.spotifystreamer.app.utils.TrackItemList;
-import com.squareup.picasso.Picasso;
-import com.squareup.picasso.Target;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class TopTenActivity extends ActionBarActivity {
+public class TopTenActivity extends ActionBarActivity implements TopTenFragment.OnFragmentInteractionListener {
 
     private final static String LOG_TAG = "TopTenActivity";
-    TopTenListAdapter mTopTenArrayAdapter;
     List<TrackItemList> mTracks = new ArrayList<>();
-    ImageView mImageViewTop;
-    TextView mTextViewTopArtist;
-    RelativeLayout mRelativeLayoutTitle;
 
     private final static String LIST_KEY = "PARCEABLE_LIST_KEY";
+
+    @Override
+    public void onFragmentInteraction(Uri uri){
+
+    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -88,114 +74,37 @@ public class TopTenActivity extends ActionBarActivity {
         getWindow().requestFeature(Window.FEATURE_ACTION_BAR);
         super.onCreate(saveInstanceState);
         setContentView(R.layout.top_ten_activity);
+
+         /* Toolbar handler */
+        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbarTopTen);
+        setToolbar(toolbar);
+        //toolbar.setSubtitle(artistName);
+        toolbar.setTitle(R.string.topten_activity_name);
+
         PreferenceManager.setDefaultValues(getApplicationContext(), R.xml.preference_activity, false);
 
-        Target target;
         String artistName = getIntent().getStringExtra("INTENT_ARTIST_NAME");
         final String artistImage = getIntent().getStringExtra("INTENT_ARTIST_IMAGE");
         mTracks = getIntent().getParcelableArrayListExtra("TOP_TEN_LIST");
 
-        /* Toolbar handler */
-        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbarTopTen);
-        setToolbar(toolbar);
-        toolbar.setSubtitle(artistName);
-        toolbar.setTitle(R.string.topten_activity_name);
+        FragmentManager fragmentManager = getFragmentManager();
+        FragmentTransaction fragmentTransaction = getFragmentManager().beginTransaction();
 
-        /* Take references to views */
-        mImageViewTop = (ImageView) findViewById(R.id.imageview_top_artist_topten);
-        mTextViewTopArtist =(TextView) findViewById(R.id.textview_top_title_topten);
-        mRelativeLayoutTitle = (RelativeLayout) findViewById(R.id.layout_top_topten_activity);
+        Fragment topTenFragment = new TopTenFragment();
+        Bundle argsBundle = new Bundle();
 
-        /* Preparing the target BMP for Picasso framework */
-        target = makeBitmapTarget();
+        argsBundle.putString("ARG_ARTIST_NAME", getIntent().getStringExtra("INTENT_ARTIST_NAME"));
+        argsBundle.putString("ARG_ARTIST_IMAGE", getIntent().getStringExtra("INTENT_ARTIST_IMAGE"));
+        argsBundle.putParcelableArrayList("ARG_TOP_TEN_LIST", getIntent().getParcelableArrayListExtra("TOP_TEN_LIST"));
 
-        if (artistImage != null) {
-            Picasso.with(this).load(artistImage).into(target);
-        }
+        topTenFragment.setArguments(argsBundle);
 
-        /* Blur image on Image View at top of activity */
-        blurImageView(mImageViewTop, artistImage);
-
-        /* Setting Artist name as Title of the Top side of the activity */
-        mTextViewTopArtist.setText(artistName);
-
-        ListView topTenListView = (ListView) findViewById(R.id.listView_topTen);
-        mTopTenArrayAdapter = new TopTenListAdapter(this, R.layout.list_item_topten, new ArrayList<TrackItemList>());
-        topTenListView.setAdapter(mTopTenArrayAdapter);
-
-        //if there are no saved instances (e.g. configuration change) server has to be queried
-        if (null == saveInstanceState) {
-
-            showTopTenList(mTracks);
-        } else {
-
-            mTracks = saveInstanceState.getParcelableArrayList(LIST_KEY);
-            showTopTenList(mTracks);
-        }
+        fragmentTransaction.replace(R.id.topten_container, topTenFragment);
+        fragmentTransaction.commit();
 
     }
 
-    /* Blur Relative Layout of Top Ten Activity */
-    protected void blurImageView(ImageView imageView, String artistImage) {
 
-        final String localArtistImage = artistImage;
-
-        imageView.post(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    Picasso.with(getParent()).load(localArtistImage).into(new Target() {
-                        @Override
-                        public void onBitmapLoaded(Bitmap bitmap, Picasso.LoadedFrom from) {
-                            BitmapDrawable bluredBitmap = new BitmapDrawable(createBitmap_ScriptIntrinsicBlur(bitmap, 25.0f));
-
-                            if (Build.VERSION.SDK_INT >= 16)
-                                mRelativeLayoutTitle.setBackground(bluredBitmap);
-                            else
-                                mRelativeLayoutTitle.setBackgroundDrawable(bluredBitmap);
-                        }
-
-                        @Override
-                        public void onBitmapFailed(Drawable errorDrawable) {
-
-                        }
-
-                        @Override
-                        public void onPrepareLoad(Drawable placeHolderDrawable) {
-
-                        }
-                    });
-                } catch (Exception e) {
-                    Log.d(LOG_TAG, "Bluring error - " + e.getMessage());
-                }
-
-
-            }
-        });
-    }
-
-    /* Picasso Target builder for BMP elaboration */
-    private Target makeBitmapTarget() {
-        Target target = new Target() {
-            @Override
-            public void onBitmapLoaded(Bitmap bitmap, Picasso.LoadedFrom from) {
-                RoundImage roundImage = new RoundImage(bitmap);
-                mImageViewTop.setImageDrawable(roundImage);
-            }
-
-            @Override
-            public void onBitmapFailed(Drawable errorDrawable) {
-
-            }
-
-            @Override
-            public void onPrepareLoad(Drawable placeHolderDrawable) {
-
-            }
-        };
-
-        return target;
-    }
 
     /* Customize the toolbar */
     private boolean setToolbar(Toolbar toolbar) {
@@ -221,59 +130,7 @@ public class TopTenActivity extends ActionBarActivity {
         return true;
     }
 
-    /* Populate the array list adapter of Top Ten Tracks */
-    private void showTopTenList(List<TrackItemList> tracks) {
 
-        try {
-            mTopTenArrayAdapter.clear();
 
-            for (TrackItemList track : tracks) {
-
-                Log.d("Track AlbumName:", track.getAlbumName());
-                Log.d("Track name:", track.getName());
-                Log.d("Track image:", track.getImage());
-
-                if (track.getImage().equals(""))
-                    mTopTenArrayAdapter.add(new TrackItemList(track.getAlbumName(), track.getName(), null, null, track.getId(), track.getTrackPreview_url()));
-                else
-                    mTopTenArrayAdapter.add(new TrackItemList(track.getAlbumName(), track.getName(), track.getImage(), track.getAlbumImages(), track.getId(), track.getTrackPreview_url()));
-
-            }
-
-        } catch (NullPointerException e) {
-            Log.d(LOG_TAG, "mTopTenArrayAdapter is null");
-        }
-
-    }
-
-    /* Bluring image */
-    private Bitmap createBitmap_ScriptIntrinsicBlur(Bitmap src, float r) {
-
-        //Radius range (0 < r <= 25)
-        if(r <= 0){
-            r = 0.1f;
-        }else if(r > 25){
-            r = 25.0f;
-        }
-
-        Bitmap bitmap = Bitmap.createBitmap(
-                src.getWidth(), src.getHeight(),
-                Bitmap.Config.ARGB_8888);
-
-        RenderScript renderScript = RenderScript.create(this);
-
-        Allocation blurInput = Allocation.createFromBitmap(renderScript, src);
-        Allocation blurOutput = Allocation.createFromBitmap(renderScript, bitmap);
-
-        ScriptIntrinsicBlur blur = ScriptIntrinsicBlur.create(renderScript,
-                Element.U8_4(renderScript));
-        blur.setInput(blurInput);
-        blur.setRadius(r);
-        blur.forEach(blurOutput);
-
-        blurOutput.copyTo(bitmap);
-        renderScript.destroy();
-        return bitmap;
-    }
 
 }

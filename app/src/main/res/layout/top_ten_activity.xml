@@ -11,77 +11,9 @@
         xmlns:android="http://schemas.android.com/apk/res/android"
         style="@style/Toolbar" />
 
-    <LinearLayout
+    <FrameLayout
+        android:id="@+id/topten_container"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:baselineAligned="false"
-        android:orientation="vertical">
-
-        <RelativeLayout
-            android:id="@+id/layout_top_topten_activity"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="2">
-
-            <FrameLayout
-                style="@style/FrameLayoutTransparentBlack" />
-
-            <ImageView
-                android:id="@+id/imageview_top_artist_topten"
-                android:layout_width="128dp"
-                android:layout_height="128dp"
-                android:contentDescription="@string/topten_ArtistImage_content_description"
-                android:fadingEdge="horizontal"
-                android:layout_centerVertical="true"
-                android:layout_centerHorizontal="true"
-                android:src="@drawable/unknown_artist" />
-
-            <FrameLayout
-                android:layout_width="match_parent"
-                android:layout_height="5dp">
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:background="@drawable/toolbar_dropshadow" />
-            </FrameLayout>
-
-            <TextView
-                android:id="@+id/textview_top_title_topten"
-                style="@style/TextViewTopTenTitle"
-                android:layout_alignParentBottom="true"
-                android:layout_centerHorizontal="true"
-                android:gravity="center_vertical|center_horizontal"
-                android:background="#80000000" />
-
-        </RelativeLayout>
-
-        <RelativeLayout
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="3">
-
-            <FrameLayout
-                android:layout_width="match_parent"
-                android:layout_height="5dp">
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:background="@drawable/tab_dropshadow" />
-            </FrameLayout>
-
-            <ImageView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:src="@drawable/spotify_red_opacity10"/>
-
-            <ListView
-                android:id="@+id/listView_topTen"
-                style="@style/ListView" />
-
-        </RelativeLayout>
-
-    </LinearLayout>
+        android:layout_height="match_parent"/>
 
 </LinearLayout>

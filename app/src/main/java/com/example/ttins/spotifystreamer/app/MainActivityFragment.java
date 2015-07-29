@@ -1,5 +1,6 @@
 package com.example.ttins.spotifystreamer.app;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -49,12 +50,30 @@ public class MainActivityFragment extends Fragment {
     List<Artist> mResultListArtist;
     List<TrackItemList> mTracks = new ArrayList<>();
     private long mLastClickTime = 0; // variable to track event time
+    OnArtistSelectedListener mCallback;
 
     private static final String LOG_TAG = "MainActivity";
+
+    /**** Callbacks ****/
+    public interface OnArtistSelectedListener {
+        void onArtistSelected(MyArtist artist, ArrayList<TrackItemList> tracks);
+    }
+
 
     /**** Methods ****/
 
     public MainActivityFragment() {
+    }
+
+    @Override
+    public void onAttach(Activity activity){
+        super.onAttach(activity);
+
+        try{
+            mCallback = (OnArtistSelectedListener) activity;
+        } catch (ClassCastException e) {
+            throw new ClassCastException(activity.toString() + "must implement OnArtistSelectedListener interface.");
+        }
     }
 
     @Override
@@ -146,7 +165,10 @@ public class MainActivityFragment extends Fragment {
                             mLastClickTime = SystemClock.elapsedRealtime();
 
                             /* Start TopTenActivity */
-                            startActivity(makeTopTenIntent(artist));
+                            //startActivity(makeTopTenIntent(artist));
+
+                            /* Passing info to parent activity */
+                            mCallback.onArtistSelected(artist, (ArrayList<TrackItemList>) mTracks);
                         }
                     }
 
@@ -239,15 +261,6 @@ public class MainActivityFragment extends Fragment {
         }
     }
 
-    /* Create intent for TopTenActivity */
-    private Intent makeTopTenIntent(MyArtist artist) {
-        Intent intent = new Intent(getActivity(), TopTenActivity.class);
-        intent.putExtra("INTENT_ARTIST_NAME", artist.name);
-        intent.putExtra("INTENT_ARTIST_IMAGE", artist.image);
-        intent.putParcelableArrayListExtra("TOP_TEN_LIST", (ArrayList<TrackItemList>) mTracks);
-
-        return intent;
-    }
 
     /* Populating Artists list for local mResultListAdapter */
     private void showArtists(List<Artist> artists) {

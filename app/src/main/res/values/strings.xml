@@ -10,4 +10,7 @@
     <string name="listview_image_content_description_popularity">Popularity</string>
     <string name="topten_ArtistImage_content_description">Artist Image</string>
     <string name="fragment_main_image_view_spotify_background">Background Spotify image</string>
+
+<!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
 </resources>
