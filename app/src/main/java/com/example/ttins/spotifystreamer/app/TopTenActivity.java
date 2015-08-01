@@ -20,7 +20,7 @@ import com.example.ttins.spotifystreamer.app.utils.TrackItemList;
 import java.util.ArrayList;
 import java.util.List;
 
-public class TopTenActivity extends ActionBarActivity implements TopTenFragment.OnFragmentInteractionListener {
+public class TopTenActivity extends ActionBarActivity implements TopTenFragment.OnTopTenFragmentInteractionListener {
 
     private final static String LOG_TAG = "TopTenActivity";
     List<TrackItemList> mTracks = new ArrayList<>();
@@ -28,8 +28,13 @@ public class TopTenActivity extends ActionBarActivity implements TopTenFragment.
     private final static String LIST_KEY = "PARCEABLE_LIST_KEY";
 
     @Override
-    public void onFragmentInteraction(Uri uri){
+    public void onTopTenFragmentItemClick(@NonNull TrackItemList trackItemList){
+        Intent intent = new Intent(this, PlaybackActivity.class);
+        Bundle bundle = new Bundle();
 
+        bundle.putParcelable("BUNDLE_TRACK", trackItemList);
+        intent.putExtra("INTENT_TRACK_BUNDLE", bundle);
+        startActivity(intent);
     }
 
     @Override

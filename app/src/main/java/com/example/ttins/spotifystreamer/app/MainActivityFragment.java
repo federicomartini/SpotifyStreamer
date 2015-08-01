@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import kaaes.spotify.webapi.android.SpotifyApi;
 import kaaes.spotify.webapi.android.SpotifyService;
+import kaaes.spotify.webapi.android.models.ArtistSimple;
 import kaaes.spotify.webapi.android.models.ArtistsPager;
 import kaaes.spotify.webapi.android.models.Artist;
 import kaaes.spotify.webapi.android.models.Image;
@@ -249,7 +250,8 @@ public class MainActivityFragment extends Fragment {
     /* Populate Top Ten Tracks list */
     private void populateTopTenTracks(List<Track> tracks) {
         for (Track element : tracks) {
-            TrackItemList trackItemList = new TrackItemList(element.album.name,
+            TrackItemList trackItemList = new TrackItemList(getTrackArtists(element),
+                    element.album.name,
                     element.name,
                     element.album.images.get(0).url,
                     getAlbumImages(element.album.images),
@@ -259,6 +261,20 @@ public class MainActivityFragment extends Fragment {
 
             mTracks.add(trackItemList);
         }
+    }
+
+    private List<String> getTrackArtists(Track track) {
+        List<String> artists = new ArrayList<String>();
+
+        /* Avoid processing null track parameter */
+        if (null == track)
+            return null;
+
+        for (ArtistSimple artist: track.artists) {
+            artists.add(artist.name);
+        }
+
+        return artists;
     }
 
 

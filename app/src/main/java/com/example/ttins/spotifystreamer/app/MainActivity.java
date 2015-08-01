@@ -18,13 +18,13 @@ import com.example.ttins.spotifystreamer.app.utils.TrackItemList;
 import java.util.ArrayList;
 
 
-public class MainActivity extends ActionBarActivity implements MainActivityFragment.OnArtistSelectedListener, TopTenFragment.OnFragmentInteractionListener {
+public class MainActivity extends ActionBarActivity implements MainActivityFragment.OnArtistSelectedListener, TopTenFragment.OnTopTenFragmentInteractionListener {
 
     private boolean mTwoPane;
     Fragment mTopTenFragment;
 
     @Override
-    public void onFragmentInteraction(Uri uri){
+    public void onTopTenFragmentItemClick(TrackItemList trackItemList){
 
     }
 

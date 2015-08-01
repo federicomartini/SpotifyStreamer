@@ -11,6 +11,7 @@ import kaaes.spotify.webapi.android.models.Image;
 
 public class TrackItemList implements Parcelable {
 
+    private List<String> artists;
     private String albumName;
     private String name;
     private String image;
@@ -20,13 +21,16 @@ public class TrackItemList implements Parcelable {
 
     public TrackItemList() {
         this.albumImages = new ArrayList<String>();
+        this.artists = new ArrayList<String>();
     }
 
-    public TrackItemList(String albumName, String trackName, String trackImage, List<String> albumImages, String artistId, String trackPreview_url) {
+    public TrackItemList(List<String> artists, String albumName, String trackName, String trackImage, List<String> albumImages, String artistId, String trackPreview_url) {
 
         super();
         this.albumImages = new ArrayList<String>();
+        this.artists = new ArrayList<String>();
 
+        this.artists            = artists;
         this.albumName          = albumName;
         this.name               = trackName;
         this.image              = trackImage;
@@ -38,7 +42,9 @@ public class TrackItemList implements Parcelable {
     public TrackItemList(Parcel parcel) {
 
         this.albumImages = new ArrayList<String>();
+        this.artists = new ArrayList<String>();
 
+        parcel.readStringList(this.artists);
         this.albumName          = parcel.readString();
         this.name               = parcel.readString();
         this.image              = parcel.readString();
@@ -75,7 +81,7 @@ public class TrackItemList implements Parcelable {
         return this.trackPreview_url;
     }
 
-    public void setPreviewUrl(String previewUrl) {
+    public void setTrackPreviewUrl(String previewUrl) {
         this.trackPreview_url = previewUrl;
     }
 
@@ -95,6 +101,13 @@ public class TrackItemList implements Parcelable {
         return albumImages;
     }
 
+    public void setArtists(List<String> artists){
+        Collections.copy(this.artists, artists);
+    }
+
+    public List<String> getArtists() {
+        return artists;
+    }
 
     @Override
     public int describeContents() {
@@ -104,6 +117,7 @@ public class TrackItemList implements Parcelable {
     @Override
     public void writeToParcel(Parcel dest, int flags) {
 
+        dest.writeStringList(artists);
         dest.writeString(albumName);
         dest.writeString(name);
         dest.writeString(image);
