@@ -159,7 +159,6 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
                 mMediaPlayer.start();
             }
         });*/
-        mCallback.onMediaPlay();
     }
 
     public int getDuration() {
@@ -172,6 +171,10 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
 
     public boolean isMediaPlayerReady() {
         return (mMediaPlayer != null);
+    }
+
+    public boolean isMediaPlayerPaused() {
+        return mIsPaused;
     }
 
     public boolean isLooping () {
@@ -187,6 +190,11 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
     }
 
     public void onPrepared(MediaPlayer mediaPlayer) {
+        //mCallback.onTrackDataAvailable(mediaPlayer.getDuration());
+        Intent i = new Intent("DURATION_UPDATED");
+        i.putExtra("duration", mediaPlayer.getDuration());
+
+        sendBroadcast(i);
         playMusicInBackground(mediaPlayer);
     }
 
@@ -256,7 +264,7 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
     }
 
     public interface OnPlaybackServiceListener {
-        void onMediaPlay();
+
     }
 
 
