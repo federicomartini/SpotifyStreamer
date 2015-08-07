@@ -38,6 +38,18 @@
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="com.example.ttins.spotifystreamer.app.TopTenActivity" />
         </activity>
+
+        <service
+            android:name=".Services.PlaybackService"
+            android:enabled="true"
+            android:exported="true" >
+            <intent-filter>
+                <action android:name="com.example.ttins.spotifystreamer.app.services.PlaybackService.ACTION_PLAY"/>
+                <action android:name="com.example.ttins.spotifystreamer.app.services.PlaybackService.ACTION_STOP"/>
+                <action android:name="com.example.ttins.spotifystreamer.app.services.PlaybackService.ACTION_PREV"/>
+                <action android:name="com.example.ttins.spotifystreamer.app.services.PlaybackService.ACTION_NEXT"/>
+            </intent-filter>
+        </service>
     </application>
 
 </manifest>

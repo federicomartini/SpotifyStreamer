@@ -174,7 +174,7 @@ public class TopTenFragment extends Fragment {
                 TrackItemList trackItemList = mTopTenArrayAdapter.getItem(position);
 
                 if (trackItemList != null) {
-                    mCallback.onTopTenFragmentItemClick(trackItemList);
+                    mCallback.onTopTenFragmentItemClick(trackItemList, position);
                 } else {
                     Log.d(LOG_TAG, "track list null on callback");
                 }
@@ -330,7 +330,7 @@ public class TopTenFragment extends Fragment {
      * >Communicating with Other Fragments</a> for more information.
      */
     public interface OnTopTenFragmentInteractionListener {
-        void onTopTenFragmentItemClick(TrackItemList trackItemList);
+        void onTopTenFragmentItemClick(TrackItemList trackItemList, int position);
     }
 
 }

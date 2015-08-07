@@ -15,6 +15,8 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.Window;
+
+import com.example.ttins.spotifystreamer.app.Services.PlaybackService;
 import com.example.ttins.spotifystreamer.app.utils.TrackItemList;
 
 import java.util.ArrayList;
@@ -28,11 +30,22 @@ public class TopTenActivity extends ActionBarActivity implements TopTenFragment.
     private final static String LIST_KEY = "PARCEABLE_LIST_KEY";
 
     @Override
-    public void onTopTenFragmentItemClick(@NonNull TrackItemList trackItemList){
+    public void onTopTenFragmentItemClick(@NonNull TrackItemList trackItemList, @NonNull int position){
         Intent intent = new Intent(this, PlaybackActivity.class);
         Bundle bundle = new Bundle();
 
+        /* Starting Playback Service */
+        Intent playbackServiceIntent = new Intent(PlaybackService.ACTION_PLAY);
+        playbackServiceIntent.putExtra("INTENT_PREVIEW_URL", trackItemList.getTrackPreview_url());
+        /*playbackServiceIntent.putExtra("INTENT_TRACK_POSITION", position);
+        playbackServiceIntent.putParcelableArrayListExtra("INTENT_TOP_TEN_LIST", (ArrayList<TrackItemList>) mTracks);*/
+        playbackServiceIntent.setClass(this, PlaybackService.class);
+        startService(playbackServiceIntent);
+
+        /* Starting Playback UI */
         bundle.putParcelable("BUNDLE_TRACK", trackItemList);
+        bundle.putInt("INTENT_TRACK_POSITION", position);
+        bundle.putParcelableArrayList("INTENT_TOP_TEN_LIST", (ArrayList<TrackItemList>) mTracks);
         intent.putExtra("INTENT_TRACK_BUNDLE", bundle);
         startActivity(intent);
     }
