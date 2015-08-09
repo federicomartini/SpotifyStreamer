@@ -51,17 +51,19 @@ public class PlaybackActivity extends ActionBarActivity implements PlaybackActiv
         if (null == mTrackItemList)
             Log.d(LOG_TAG, "trackItemList is null");
 
-        FragmentManager fragmentManager = getFragmentManager();
-        FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
-        Fragment playbackFragment = new PlaybackActivityFragment();
-        Bundle bundle = new Bundle();
+        if (null == savedInstanceState) {
+            FragmentManager fragmentManager = getFragmentManager();
+            FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+            Fragment playbackFragment = new PlaybackActivityFragment();
+            Bundle bundle = new Bundle();
 
-        bundle.putParcelable("ARG_TRACK", mTrackItemList);
-        bundle.putParcelableArrayList("ARG_TOP_TEN_LIST", (ArrayList<TrackItemList>) mTracks);
-        bundle.putInt("ARG_TRACK_POSITION", mPosition);
+            bundle.putParcelable("ARG_TRACK", mTrackItemList);
+            bundle.putParcelableArrayList("ARG_TOP_TEN_LIST", (ArrayList<TrackItemList>) mTracks);
+            bundle.putInt("ARG_TRACK_POSITION", mPosition);
 
-        playbackFragment.setArguments(bundle);
-        fragmentTransaction.replace(R.id.playback_container, playbackFragment).commit();
+            playbackFragment.setArguments(bundle);
+            fragmentTransaction.replace(R.id.playback_container, playbackFragment).commit();
+        }
 
     }
 

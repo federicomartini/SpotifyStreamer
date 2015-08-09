@@ -1,6 +1,7 @@
 package com.example.ttins.spotifystreamer.app;
 
 import android.app.Activity;
+import android.app.Dialog;
 import android.app.DialogFragment;
 import android.app.Fragment;
 import android.content.BroadcastReceiver;
@@ -20,6 +21,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.RelativeLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
@@ -41,6 +43,7 @@ import kaaes.spotify.webapi.android.models.Artist;
 public class PlaybackActivityFragment extends DialogFragment implements PlaybackService.OnPlaybackServiceListener{
 
     private final static String LOG_TAG = "PlaybackFragment";
+    RelativeLayout mLayoutContainer;
     TextView mArtistTextView;
     TextView mAlbumTextView;
     TextView mSongTextView ;
@@ -49,7 +52,7 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
     TextView mStartTimeTextView;
     TextView mStopTimeTextView;
     ImageButton mPrevTrackImageButton;
-    ImageButton mPlayStopTrackImageButton;
+    static ImageButton mPlayStopTrackImageButton;
     ImageButton mNextTrackImageButton;
     private int mDuration;
     private PlaybackService mPlaybackService;
@@ -63,7 +66,7 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
     private double mTimeElapsed;
     private boolean mIsSeekBarTouched = true;;
     private boolean mIsNewTrack;
-    private BroadcastReceiver uiUpdated= new BroadcastReceiver() {
+    private BroadcastReceiver mUiUpdated= new BroadcastReceiver() {
 
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -74,8 +77,15 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
                     TimeUnit.MILLISECONDS.toSeconds(mDuration) -
                             TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(mDuration))
             );
+
             mStopTimeTextView.setText(sDuration);
             mTimeSeekBar.setMax(mDuration);
+            mTimeSeekBar.setProgress(mPlaybackService.getPlaybackPosition());
+
+            if (mPlaybackService.isMediaCompleted() || mPlaybackService.isMediaPlayerPaused()) {
+                mPlayStopTrackImageButton.setImageResource(android.R.drawable.ic_media_play);
+            }
+
 
         }
     };
@@ -86,6 +96,10 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
             PlaybackService.PlaybackBinder binder = (PlaybackService.PlaybackBinder) service;
             mPlaybackService = binder.getService();
             mBound=true;
+
+            if (mPlaybackService.isMediaPlayerReady())
+                mPlaybackService.getPlaybackServiceIntent();
+
             Log.d(LOG_TAG, "Bound to Playback service");
         }
 
@@ -102,9 +116,10 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
     public void onStart() {
         super.onStart();
 
+
         if (null == mPlaybackService) {
             Intent intent = new Intent(getActivity(), PlaybackService.class);
-            if (false == getActivity().bindService(intent, mConnection, Context.BIND_AUTO_CREATE)) {
+            if (!getActivity().bindService(intent, mConnection, Context.BIND_AUTO_CREATE)) {
                 Log.d(LOG_TAG, "Bind to Service failed");
             }
         }
@@ -112,23 +127,37 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
     }
 
     @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        //setRetainInstance(true);
+    }
+
+    @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
+
+        Log.d(LOG_TAG, "onCreateView()");
 
         final String START_TIME = "0:00";
         List<String> artists = new ArrayList<String>();
         View rootView = inflater.inflate(R.layout.fragment_playback, container, false);
         Bundle argsBundle = getArguments();
-        getActivity().registerReceiver(uiUpdated, new IntentFilter("DURATION_UPDATED"));
 
         if (null == argsBundle) {
             Log.d(LOG_TAG, "argsBundle is null");
         }
 
-        mTrackItemList = argsBundle.getParcelable("ARG_TRACK");
-        mPosition = argsBundle.getInt("ARG_TRACK_POSITION");
-        mTracks = argsBundle.getParcelableArrayList("ARG_TOP_TEN_LIST");
+        if(null == savedInstanceState) {
+            mTrackItemList = argsBundle.getParcelable("ARG_TRACK");
+            mPosition = argsBundle.getInt("ARG_TRACK_POSITION");
+            mTracks = argsBundle.getParcelableArrayList("ARG_TOP_TEN_LIST");
+        } else {
+            mTrackItemList = savedInstanceState.getParcelable("TRACK_ITEM_LIST");
+            mPosition = savedInstanceState.getInt("PLAY_POSITION");
+            mTracks = savedInstanceState.getParcelableArrayList("TRACK_LIST");
+        }
 
+        mLayoutContainer = (RelativeLayout) rootView.findViewById(R.id.dialog_fragment_container);
         mArtistTextView = (TextView) rootView.findViewById(R.id.playback_artist_textview);
         mAlbumTextView = (TextView) rootView.findViewById(R.id.playback_album_textview);
         mSongTextView = (TextView) rootView.findViewById(R.id.playback_song_textview);
@@ -160,7 +189,6 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
             Log.d(LOG_TAG, "TrackItemList is null");
         }
 
-
         mTimeSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
@@ -168,7 +196,7 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
                     if (mPlaybackService.isMediaPlayerReady() && fromUser) {
                         mPlaybackService.setPlaybackPosition(progress);
 
-                        if(mPlaybackService.onMediaCompleted()) {
+                        if(mPlaybackService.isMediaCompleted()) {
 
                             Log.d(LOG_TAG, "DEBUG :: Media completed. Restarting the track.");
                             Intent serviceIntent = new Intent(PlaybackService.ACTION_PLAY);
@@ -197,7 +225,10 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
             public void onClick(View v) {
                 String stringAction;
 
-                mPlaybackService.setPlaybackPosition(mPlaybackService.getPlaybackPosition());
+                if(!mPlaybackService.isMediaCompleted())
+                    mPlaybackService.setPlaybackPosition(mPlaybackService.getPlaybackPosition());
+                else
+                    mPlaybackService.setPlaybackPosition(0);
 
                 if (mPlaybackService.isMediaStarted()) {
                     stringAction = PlaybackService.ACTION_STOP;
@@ -221,7 +252,7 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
             public void onClick(View v) {
                 Intent serviceIntent = new Intent(PlaybackService.ACTION_PREV);
                 mPosition = mPosition - 1;
-                if (mPosition < 0) mPosition = 9;
+                if (mPosition < 0) mPosition = mTracks.size() - 1;
                 mTrackItemList = mTracks.get(mPosition);
                 serviceIntent.putExtra("INTENT_PREVIEW_URL", mTrackItemList.getTrackPreview_url());
                 serviceIntent.setClass(getActivity(), PlaybackService.class);
@@ -245,7 +276,7 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
             public void onClick(View v) {
                 Intent serviceIntent = new Intent(PlaybackService.ACTION_NEXT);
                 mPosition = mPosition + 1;
-                if (mPosition >= 10) mPosition = 0;
+                if (mPosition >= mTracks.size()) mPosition = 0;
                 mTrackItemList = mTracks.get(mPosition);
                 serviceIntent.putExtra("INTENT_PREVIEW_URL", mTrackItemList.getTrackPreview_url());
                 serviceIntent.setClass(getActivity(), PlaybackService.class);
@@ -267,6 +298,33 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
         return rootView;
     }
 
+    @Override
+    public void onSaveInstanceState(Bundle savedInstanceState) {
+        super.onSaveInstanceState(savedInstanceState);
+
+        savedInstanceState.putParcelable("TRACK_ITEM_LIST", mTrackItemList);
+        savedInstanceState.putInt("PLAY_POSITION", mPosition);
+        savedInstanceState.putParcelableArrayList("TRACK_LIST", (ArrayList<TrackItemList>) mTracks);
+    }
+
+    @Override
+    public void onResume() {
+        getActivity().registerReceiver(mUiUpdated, new IntentFilter("DURATION_UPDATED"));
+
+        super.onResume();
+
+        if (getDialog() != null) {
+            int height = (int) getResources().getDimension(R.dimen.fragment_container_height);
+            int width = (int) getResources().getDimension(R.dimen.fragment_container_width);
+            mLayoutContainer.getLayoutParams().height = height;
+            mLayoutContainer.getLayoutParams().width = width;
+
+            height = (int) getResources().getDimension(R.dimen.dialog_container_height);
+            width = (int) getResources().getDimension(R.dimen.dialog_container_width);
+            getDialog().getWindow().setLayout(width, height);
+        }
+
+    }
 
     private Runnable updateSeekBarTime = new Runnable() {
         @Override
@@ -274,7 +332,7 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
 
             try {
                 if (null != mPlaybackService ) {
-                    if (!mPlaybackService.onMediaCompleted() && !mPlaybackService.isMediaPlayerPaused()) {
+                    if (!mPlaybackService.isMediaCompleted() && !mPlaybackService.isMediaPlayerPaused()) {
                         mTimeElapsed = mPlaybackService.getPlaybackPosition();
                         mTimeSeekBar.setProgress((int) mTimeElapsed);
                     }
@@ -289,6 +347,14 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
 
     @Override
     public void onPause() {
+        try {
+            if (mUiUpdated != null)
+                getActivity().unregisterReceiver(mUiUpdated);
+            Log.d(LOG_TAG, "onPause(): unregister Receiver");
+        }
+        catch (IllegalArgumentException e) {
+            Log.d(LOG_TAG, "Receiver not registered to Broadcast event");
+        }
         super.onPause();
 
     }
@@ -300,6 +366,8 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
             getActivity().unbindService(mConnection);
             mBound = false;
         }
+
+
     }
 
     @Override
@@ -323,13 +391,30 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
     @Override
     public void onDestroy() {
         super.onDestroy();
-
-        getActivity().unregisterReceiver(uiUpdated);
     }
 
     public interface OnFragmentClickListener {
 
     }
 
+    @Override
+    public void onMediaCompleted() {
+        if (mPlayStopTrackImageButton != null) {
+            mPlayStopTrackImageButton.setImageResource(android.R.drawable.ic_media_play);
+            Log.d(LOG_TAG, "onMediaCompleted called");
+        } else {
+            Log.d(LOG_TAG, "onMediaCompleted found null button");
+        }
+    }
+
+    @Override
+    public void onMediaPlaying() {
+        if (mPlayStopTrackImageButton != null) {
+            mPlayStopTrackImageButton.setImageResource(android.R.drawable.ic_media_pause);
+            Log.d(LOG_TAG, "onMediaPlaying called");
+        } else {
+            Log.d(LOG_TAG, "onMediaPlaying found null button");
+        }
+    }
 
 }

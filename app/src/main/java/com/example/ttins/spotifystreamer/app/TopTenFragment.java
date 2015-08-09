@@ -104,9 +104,14 @@ public class TopTenFragment extends Fragment {
             mParam2 = getArguments().getString(ARG_PARAM2);
         }
 
-        mArtistName = getArguments().getString(ARG_ARTIST_NAME);
-        mArtistImage = getArguments().getString(ARG_ARTIST_IMAGE);
-        mTracks = getArguments().getParcelableArrayList(ARG_TOP_TEN_LIST);
+        if (null == savedInstanceState) {
+            mArtistName = getArguments().getString(ARG_ARTIST_NAME);
+            mArtistImage = getArguments().getString(ARG_ARTIST_IMAGE);
+            mTracks = getArguments().getParcelableArrayList(ARG_TOP_TEN_LIST);
+        } else {
+            mTracks = savedInstanceState.getParcelableArrayList(LIST_KEY);
+        }
+
 
         if (mArtistImage == null || mArtistName == null || mTracks == null)
             Log.d(LOG_TAG, "Some arguments are null");

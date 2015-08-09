@@ -6,6 +6,7 @@ import android.app.FragmentManager;
 import android.app.FragmentTransaction;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Binder;
 import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.v7.app.ActionBarActivity;
@@ -95,6 +96,11 @@ public class MainActivity extends ActionBarActivity implements MainActivityFragm
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        if (null != savedInstanceState) {
+            mTracks = savedInstanceState.getParcelableArrayList("TRACK_LIST");
+        }
+
         setContentView(R.layout.activity_main);
 
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
@@ -115,6 +121,15 @@ public class MainActivity extends ActionBarActivity implements MainActivityFragm
         getMenuInflater().inflate(R.menu.menu_main, menu);
 
         return true;
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle saveInstanceState) {
+        super.onSaveInstanceState(saveInstanceState);
+
+        saveInstanceState.putParcelableArrayList("TRACK_LIST", (ArrayList<TrackItemList>) mTracks);
+
+
     }
 
     @Override

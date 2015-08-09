@@ -57,6 +57,7 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
                 mIsCompleted=true;
                 mIsStarted=false;
                 mIsPaused=false;
+                mCallback.onMediaCompleted();
                 Log.d(LOG_TAG, "Media completed");
             }
         });
@@ -97,6 +98,7 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
                 } else if (mIsCompleted) {
                     Log.d(LOG_TAG, "DEBUG :: Completed. Preparing through seekTo " + mMediaPlayer.getCurrentPosition() + " sec");
                     mMediaPlayer.start();
+                    mCallback.onMediaPlaying();
                     mIsStarted = true;
                     mIsCompleted=false;
                 }
@@ -151,6 +153,7 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
     public void playMusicInBackground(MediaPlayer mediaPlayer) {
         mIsPaused = false;
         mediaPlayer.start();
+        mCallback.onMediaPlaying();
         mIsStarted = true;
         /*mBackgroundThread = new Thread(new Runnable() {
             @Override
@@ -170,6 +173,7 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
     }
 
     public boolean isMediaPlayerReady() {
+
         return (mMediaPlayer != null);
     }
 
@@ -198,8 +202,15 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
         playMusicInBackground(mediaPlayer);
     }
 
-    public boolean onMediaCompleted() {
+    public boolean isMediaCompleted() {
         return mIsCompleted;
+    }
+
+    public void getPlaybackServiceIntent() {
+        Intent i = new Intent("DURATION_UPDATED");
+        i.putExtra("duration", mMediaPlayer.getDuration());
+
+        sendBroadcast(i);
     }
 
     @Override
@@ -237,7 +248,10 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
             case AudioManager.AUDIOFOCUS_GAIN:
                 // resume playback
                 if (mMediaPlayer == null) initMediaPlayer();
-                else if (!mMediaPlayer.isPlaying()) mMediaPlayer.start();
+                else if (!mMediaPlayer.isPlaying()) {
+                    mMediaPlayer.start();
+                    mCallback.onMediaPlaying();
+                }
                 mMediaPlayer.setVolume(1.0f, 1.0f);
                 break;
 
@@ -264,7 +278,8 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
     }
 
     public interface OnPlaybackServiceListener {
-
+        void onMediaCompleted();
+        void onMediaPlaying();
     }
 
 
