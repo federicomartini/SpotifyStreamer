@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import kaaes.spotify.webapi.android.models.Artist;
+import kaaes.spotify.webapi.android.models.Image;
 
 
 /**
@@ -43,12 +44,13 @@ import kaaes.spotify.webapi.android.models.Artist;
 public class PlaybackActivityFragment extends DialogFragment implements PlaybackService.OnPlaybackServiceListener{
 
     private final static String LOG_TAG = "PlaybackFragment";
+    private static final String START_TIME = "0:00";
     RelativeLayout mLayoutContainer;
-    TextView mArtistTextView;
-    TextView mAlbumTextView;
-    TextView mSongTextView ;
-    ImageView mAlbumImageView;
-    SeekBar mTimeSeekBar;
+    static TextView mArtistTextView;
+    static TextView mAlbumTextView;
+    static TextView mSongTextView ;
+    static ImageView mAlbumImageView;
+    static SeekBar mTimeSeekBar;
     TextView mStartTimeTextView;
     TextView mStopTimeTextView;
     ImageButton mPrevTrackImageButton;
@@ -66,6 +68,13 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
     private double mTimeElapsed;
     private boolean mIsSeekBarTouched = true;;
     private boolean mIsNewTrack;
+    private String tempAlbumName;
+    private String tempAlbumImageUrl;
+    private String tempTrackName;
+    private List<String> tempArtistList;
+    private int tempDuration;
+    private boolean mNowPlayingRequest;
+
     private BroadcastReceiver mUiUpdated= new BroadcastReceiver() {
 
         @Override
@@ -79,8 +88,14 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
             );
 
             mStopTimeTextView.setText(sDuration);
-            mTimeSeekBar.setMax(mDuration);
-            mTimeSeekBar.setProgress(mPlaybackService.getPlaybackPosition());
+
+            try {
+                mTimeSeekBar.setMax(mDuration);
+                mTimeSeekBar.setProgress(mPlaybackService.getPlaybackPosition());
+            }
+            catch (NullPointerException e) {
+                Log.d(LOG_TAG, "SeekBar is null on broadcast Ui update");
+            }
 
             if (mPlaybackService.isMediaCompleted() || mPlaybackService.isMediaPlayerPaused()) {
                 mPlayStopTrackImageButton.setImageResource(android.R.drawable.ic_media_play);
@@ -99,6 +114,33 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
 
             if (mPlaybackService.isMediaPlayerReady())
                 mPlaybackService.getPlaybackServiceIntent();
+
+            if(mNowPlayingRequest) {
+                mNowPlayingRequest = false;
+                if (mPlaybackService.isMediaStarted() || mPlaybackService.isMediaPlayerPaused()) {
+                    Intent nowPlayToIntent = new Intent(PlaybackService.ACTION_PLAY_RESUME);
+                    nowPlayToIntent.setClass(getActivity(), PlaybackService.class);
+                    getActivity().startService(nowPlayToIntent);
+
+                    if (mPlaybackService.getTrackItemList() == null) {
+                        mSongTextView.setText("No Song to play");
+                    } else {
+                        mStartTimeTextView.setText(START_TIME);
+                        mAlbumTextView.setText(mPlaybackService.getCurrentAlbumName());
+                        Picasso.with(getActivity()).load(mPlaybackService.getAlbumImageUrl()).into(mAlbumImageView);
+                        mSongTextView.setText(mPlaybackService.getTrackName());
+                    }
+                } else {
+                    dismiss();
+                    mCallback.onFragmentDismiss();
+                    durationHandler.removeCallbacks(updateSeekBarTime);
+                }
+            } else {
+                mStartTimeTextView.setText(START_TIME);
+                mAlbumTextView.setText(mPlaybackService.getCurrentAlbumName());
+                Picasso.with(getActivity()).load(mPlaybackService.getAlbumImageUrl()).into(mAlbumImageView);
+                mSongTextView.setText(mPlaybackService.getTrackName());
+            }
 
             Log.d(LOG_TAG, "Bound to Playback service");
         }
@@ -138,13 +180,16 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
 
         Log.d(LOG_TAG, "onCreateView()");
 
-        final String START_TIME = "0:00";
         List<String> artists = new ArrayList<String>();
         View rootView = inflater.inflate(R.layout.fragment_playback, container, false);
         Bundle argsBundle = getArguments();
 
         if (null == argsBundle) {
             Log.d(LOG_TAG, "argsBundle is null");
+        }
+
+        if (argsBundle.getBoolean("ARG_NOW_PLAYING")) {
+            mNowPlayingRequest = true;
         }
 
         if(null == savedInstanceState) {
@@ -169,26 +214,30 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
         mPlayStopTrackImageButton = (ImageButton) rootView.findViewById(R.id.playback_playstop_track_imagebutton);
         mNextTrackImageButton = (ImageButton) rootView.findViewById(R.id.playback_next_track_imagebutton);
 
-        artists = mTrackItemList.getArtists();
-        String artistsStringList = "";
+        if (null != mTrackItemList) {
+            artists = mTrackItemList.getArtists();
+            String artistsStringList = "";
 
-        for (String artistName: artists) {
-            artistsStringList = artistsStringList + artistName + "";
+            for (String artistName: artists) {
+                artistsStringList = artistsStringList + artistName + "";
+            }
+
+            mArtistTextView.setText(artistsStringList);
+
+            mStartTimeTextView.setText(START_TIME);
+
+            if (mPlaybackService != null) {
+                mAlbumTextView.setText(tempAlbumName);
+                Picasso.with(getActivity()).load(tempAlbumImageUrl).into(mAlbumImageView);
+                mSongTextView.setText(tempTrackName);
+
+            } else {
+                Log.d(LOG_TAG, "TrackItemList is null");
+            }
         }
 
-        mArtistTextView.setText(artistsStringList);
 
-        mStartTimeTextView.setText(START_TIME);
-
-        if (mTrackItemList != null) {
-            mAlbumTextView.setText(mTrackItemList.getAlbumName());
-            Picasso.with(getActivity()).load(mTrackItemList.getAlbumImages().get(0)).into(mAlbumImageView);
-            mSongTextView.setText(mTrackItemList.getName());
-            durationHandler.postDelayed(updateSeekBarTime, 100);
-        } else {
-            Log.d(LOG_TAG, "TrackItemList is null");
-        }
-
+        durationHandler.postDelayed(updateSeekBarTime, 100);
         mTimeSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
@@ -198,11 +247,15 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
 
                         if(mPlaybackService.isMediaCompleted()) {
 
-                            Log.d(LOG_TAG, "DEBUG :: Media completed. Restarting the track.");
+                            /*Log.d(LOG_TAG, "DEBUG :: Media completed. Restarting the track.");
                             Intent serviceIntent = new Intent(PlaybackService.ACTION_PLAY);
                             serviceIntent.putExtra("INTENT_PREVIEW_URL", mTrackItemList.getTrackPreview_url());
                             serviceIntent.setClass(getActivity(), PlaybackService.class);
-                            getActivity().startService(serviceIntent);
+                            getActivity().startService(serviceIntent);*/
+
+                            Intent seekToIntent = new Intent(PlaybackService.ACTION_SEEK);
+                            seekToIntent.putExtra("INTENT_SEEKTO", progress);
+                            getActivity().startService(seekToIntent);
                         }
                     }
                 } catch (NullPointerException e) {
@@ -225,10 +278,10 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
             public void onClick(View v) {
                 String stringAction;
 
-                if(!mPlaybackService.isMediaCompleted())
+                /*if(!mPlaybackService.isMediaCompleted())
                     mPlaybackService.setPlaybackPosition(mPlaybackService.getPlaybackPosition());
                 else
-                    mPlaybackService.setPlaybackPosition(0);
+                    mPlaybackService.setPlaybackPosition(0);*/
 
                 if (mPlaybackService.isMediaStarted()) {
                     stringAction = PlaybackService.ACTION_STOP;
@@ -241,7 +294,9 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
                 }
 
                 Intent serviceIntent = new Intent(stringAction);
+                /*serviceIntent.putExtra("INTENT_PREVIEW_URL", mTrackItemList.getTrackPreview_url());
                 serviceIntent.putExtra("INTENT_PREVIEW_URL", mTrackItemList.getTrackPreview_url());
+                serviceIntent.putParcelableArrayListExtra("INTENT_TOP_TEN_LIST", (ArrayList<TrackItemList>) mTracks);*/
                 serviceIntent.setClass(getActivity(), PlaybackService.class);
                 getActivity().startService(serviceIntent);
             }
@@ -251,14 +306,14 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
             @Override
             public void onClick(View v) {
                 Intent serviceIntent = new Intent(PlaybackService.ACTION_PREV);
-                mPosition = mPosition - 1;
+                /*mPosition = mPosition - 1;
                 if (mPosition < 0) mPosition = mTracks.size() - 1;
                 mTrackItemList = mTracks.get(mPosition);
-                serviceIntent.putExtra("INTENT_PREVIEW_URL", mTrackItemList.getTrackPreview_url());
+                serviceIntent.putExtra("INTENT_PREVIEW_URL", mTrackItemList.getTrackPreview_url());*/
                 serviceIntent.setClass(getActivity(), PlaybackService.class);
                 getActivity().startService(serviceIntent);
 
-                if (mTrackItemList != null) {
+                /*if (mTrackItemList != null) {
                     mAlbumTextView.setText(mTrackItemList.getAlbumName());
                     Picasso.with(getActivity()).load(mTrackItemList.getAlbumImages().get(0)).into(mAlbumImageView);
                     mSongTextView.setText(mTrackItemList.getName());
@@ -267,7 +322,7 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
 
                 } else {
                     Log.d(LOG_TAG, "TrackItemList is null");
-                }
+                }*/
             }
         });
 
@@ -275,14 +330,14 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
             @Override
             public void onClick(View v) {
                 Intent serviceIntent = new Intent(PlaybackService.ACTION_NEXT);
-                mPosition = mPosition + 1;
+                /*mPosition = mPosition + 1;
                 if (mPosition >= mTracks.size()) mPosition = 0;
                 mTrackItemList = mTracks.get(mPosition);
-                serviceIntent.putExtra("INTENT_PREVIEW_URL", mTrackItemList.getTrackPreview_url());
+                serviceIntent.putExtra("INTENT_PREVIEW_URL", mTrackItemList.getTrackPreview_url());*/
                 serviceIntent.setClass(getActivity(), PlaybackService.class);
                 getActivity().startService(serviceIntent);
 
-                if (mTrackItemList != null) {
+                /*if (mTrackItemList != null) {
                     mAlbumTextView.setText(mTrackItemList.getAlbumName());
                     Picasso.with(getActivity()).load(mTrackItemList.getAlbumImages().get(0)).into(mAlbumImageView);
                     mSongTextView.setText(mTrackItemList.getName());
@@ -291,7 +346,7 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
 
                 } else {
                     Log.d(LOG_TAG, "TrackItemList is null");
-                }
+                }*/
             }
         });
 
@@ -355,6 +410,8 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
         catch (IllegalArgumentException e) {
             Log.d(LOG_TAG, "Receiver not registered to Broadcast event");
         }
+
+        durationHandler.removeCallbacks(updateSeekBarTime);
         super.onPause();
 
     }
@@ -394,7 +451,7 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
     }
 
     public interface OnFragmentClickListener {
-
+        void onFragmentDismiss();
     }
 
     @Override
@@ -415,6 +472,29 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
         } else {
             Log.d(LOG_TAG, "onMediaPlaying found null button");
         }
+    }
+
+    @Override
+    public void onTrackPlaying(String albumName, String albumImageUrl, String trackName, List<String> artistNames, int duration) {
+        try {
+            Log.d(LOG_TAG, "onTrackPlaying received");
+            mAlbumTextView.setText(albumName);
+            Picasso.with(getActivity()).load(albumImageUrl).into(mAlbumImageView);
+            mSongTextView.setText(trackName);
+            mTimeSeekBar.setMax(duration);
+        } catch (NullPointerException e) {
+            Log.d(LOG_TAG, "onTrackPlaying() failed cause of NullPointerException");
+            tempAlbumName = albumName;
+            tempAlbumImageUrl = albumImageUrl;
+            tempTrackName = trackName;
+            tempArtistList = artistNames;
+            tempDuration = duration;
+        }
+
+    }
+
+    static class NowPlaying {
+
     }
 
 }

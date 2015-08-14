@@ -15,6 +15,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.Window;
+import android.widget.Toast;
 
 import com.example.ttins.spotifystreamer.app.Services.PlaybackService;
 import com.example.ttins.spotifystreamer.app.utils.TrackItemList;
@@ -25,7 +26,9 @@ import java.util.List;
 public class TopTenActivity extends ActionBarActivity implements TopTenFragment.OnTopTenFragmentInteractionListener {
 
     private final static String LOG_TAG = "TopTenActivity";
+    private MenuItem mPlayActionButton;
     List<TrackItemList> mTracks = new ArrayList<>();
+    public static final String ACTION_NOW_PLAY = "com.example.ttins.spotifystreamer.MainActivity.INTENT_NOW_PLAYING_TRACK";
 
     private final static String LIST_KEY = "PARCEABLE_LIST_KEY";
 
@@ -35,12 +38,16 @@ public class TopTenActivity extends ActionBarActivity implements TopTenFragment.
         Bundle bundle = new Bundle();
 
         /* Starting Playback Service */
-        Intent playbackServiceIntent = new Intent(PlaybackService.ACTION_PLAY);
+        Intent playbackServiceIntent = new Intent(PlaybackService.ACTION_INIT);
         playbackServiceIntent.putExtra("INTENT_PREVIEW_URL", trackItemList.getTrackPreview_url());
-        /*playbackServiceIntent.putExtra("INTENT_TRACK_POSITION", position);
-        playbackServiceIntent.putParcelableArrayListExtra("INTENT_TOP_TEN_LIST", (ArrayList<TrackItemList>) mTracks);*/
+        playbackServiceIntent.putExtra("INTENT_TRACK_POSITION", position);
+        playbackServiceIntent.putParcelableArrayListExtra("INTENT_TOP_TEN_LIST", (ArrayList<TrackItemList>) mTracks);
         playbackServiceIntent.setClass(this, PlaybackService.class);
         startService(playbackServiceIntent);
+
+        Intent playSongIntent = new Intent(PlaybackService.ACTION_PLAY);
+        playSongIntent.setClass(this, PlaybackService.class);
+        startService(playSongIntent);
 
         /* Starting Playback UI */
         bundle.putParcelable("BUNDLE_TRACK", trackItemList);
@@ -54,6 +61,8 @@ public class TopTenActivity extends ActionBarActivity implements TopTenFragment.
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_top_ten_activity, menu);
+        mPlayActionButton = menu.findItem(R.id.now_playing_action_button_topten);
+
         return true;
     }
 
@@ -69,6 +78,13 @@ public class TopTenActivity extends ActionBarActivity implements TopTenFragment.
             Intent intent = new Intent(this, SettingsActivity.class);
             startActivity(intent);
             return true;
+        }
+
+        if (id == R.id.now_playing_action_button_topten) {
+            Intent intent = new Intent(ACTION_NOW_PLAY);
+            startActivity(intent);
+            return true;
+
         }
 
         return super.onOptionsItemSelected(item);

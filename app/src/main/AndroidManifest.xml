@@ -34,6 +34,10 @@
             android:name=".PlaybackActivity"
             android:label="@string/title_activity_playback"
             android:parentActivityName=".TopTenActivity" >
+            <intent-filter>
+                <action android:name="com.example.ttins.spotifystreamer.MainActivity.INTENT_NOW_PLAYING_TRACK"/>
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="com.example.ttins.spotifystreamer.app.TopTenActivity" />

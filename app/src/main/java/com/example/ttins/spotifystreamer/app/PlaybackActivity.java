@@ -35,11 +35,6 @@ public class PlaybackActivity extends ActionBarActivity implements PlaybackActiv
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_playback);
 
-        Intent intent = getIntent();
-        mTrackItemList =  intent.getBundleExtra("INTENT_TRACK_BUNDLE").getParcelable("BUNDLE_TRACK");
-        mPosition = intent.getBundleExtra("INTENT_TRACK_BUNDLE").getInt("INTENT_TRACK_POSITION");
-        mTracks = intent.getBundleExtra("INTENT_TRACK_BUNDLE").getParcelableArrayList("INTENT_TOP_TEN_LIST");
-
         /* Toolbar handler */
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbarPlayback);
         setToolbar(toolbar);
@@ -48,8 +43,19 @@ public class PlaybackActivity extends ActionBarActivity implements PlaybackActiv
 
         PreferenceManager.setDefaultValues(getApplicationContext(), R.xml.preference_activity, false);
 
-        if (null == mTrackItemList)
-            Log.d(LOG_TAG, "trackItemList is null");
+        Intent intent = getIntent();
+
+        //Check if the Intent comes from the Now Playing button or from Top Ten Item Click
+        if (!intent.hasExtra("INTENT_TRACK_BUNDLE")) {
+            //do nothing
+        } else {
+            mTrackItemList =  intent.getBundleExtra("INTENT_TRACK_BUNDLE").getParcelable("BUNDLE_TRACK");
+            mPosition = intent.getBundleExtra("INTENT_TRACK_BUNDLE").getInt("INTENT_TRACK_POSITION");
+            mTracks = intent.getBundleExtra("INTENT_TRACK_BUNDLE").getParcelableArrayList("INTENT_TOP_TEN_LIST");
+
+            if (null == mTrackItemList)
+                Log.d(LOG_TAG, "trackItemList is null");
+        }
 
         if (null == savedInstanceState) {
             FragmentManager fragmentManager = getFragmentManager();
@@ -57,9 +63,13 @@ public class PlaybackActivity extends ActionBarActivity implements PlaybackActiv
             Fragment playbackFragment = new PlaybackActivityFragment();
             Bundle bundle = new Bundle();
 
-            bundle.putParcelable("ARG_TRACK", mTrackItemList);
-            bundle.putParcelableArrayList("ARG_TOP_TEN_LIST", (ArrayList<TrackItemList>) mTracks);
-            bundle.putInt("ARG_TRACK_POSITION", mPosition);
+            if (intent.hasExtra("INTENT_TRACK_BUNDLE")) {
+                bundle.putParcelable("ARG_TRACK", mTrackItemList);
+                bundle.putParcelableArrayList("ARG_TOP_TEN_LIST", (ArrayList<TrackItemList>) mTracks);
+                bundle.putInt("ARG_TRACK_POSITION", mPosition);
+            } else {
+                bundle.putBoolean("ARG_NOW_PLAYING", true);
+            }
 
             playbackFragment.setArguments(bundle);
             fragmentTransaction.replace(R.id.playback_container, playbackFragment).commit();
@@ -125,5 +135,9 @@ public class PlaybackActivity extends ActionBarActivity implements PlaybackActiv
     public void onFragmentPrevClick() {};
 
     public void onFragmentNextClick() {};
+
+    public void onFragmentDismiss() {
+        this.finish();
+    }
 
 }

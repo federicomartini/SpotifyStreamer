@@ -19,10 +19,16 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import kaaes.spotify.webapi.android.models.Image;
+
 public class PlaybackService extends Service implements MediaPlayer.OnPreparedListener, MediaPlayer.OnErrorListener, AudioManager.OnAudioFocusChangeListener {
 
     private final static String LOG_TAG = "PlaybackService";
+    public static final String ACTION_INIT = "com.example.ttins.spotifystreamer.app.services.PlaybackService.ACTION_INIT";
     public static final String ACTION_PLAY = "com.example.ttins.spotifystreamer.app.services.PlaybackService.ACTION_PLAY";
+    public static final String ACTION_PLAY_RESUME = "com.example.ttins.spotifystreamer.app.services.PlaybackService.ACTION_PLAY_RESUME";
+    public static final String ACTION_PAUSE = "com.example.ttins.spotifystreamer.app.services.PlaybackService.ACTION_PAUSE";
+    public static final String ACTION_SEEK = "com.example.ttins.spotifystreamer.app.services.PlaybackService.ACTION_SEEK";
     public static final String ACTION_STOP = "com.example.ttins.spotifystreamer.app.services.PlaybackService.ACTION_STOP";
     public static final String ACTION_PREV = "com.example.ttins.spotifystreamer.app.services.PlaybackService.ACTION_PREV";
     public static final String ACTION_NEXT = "com.example.ttins.spotifystreamer.app.services.PlaybackService.ACTION_NEXT";
@@ -34,8 +40,8 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
     private String mNewUrl;
     private boolean mIsPaused;
     private int mPausePosition;
-    /*private int mPosition;
-    private List<TrackItemList> mTrackItemList = new ArrayList<TrackItemList>();*/
+    private int mPosition;
+    private List<TrackItemList> mTrackItemList = new ArrayList<TrackItemList>();
     public OnPlaybackServiceListener mCallback;
     private boolean mIsCompleted;
     private boolean mIsStarted;
@@ -81,10 +87,97 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
             return START_STICKY;
         }
 
-        mNewUrl = intent.getStringExtra("INTENT_PREVIEW_URL");
-        /*mPosition = intent.getIntExtra("INTENT_TRACK_POSITION", 0);
-        mTrackItemList = intent.getParcelableArrayListExtra("INTENT_TOP_TEN_LIST");*/
+        if (intent.getAction().equals(ACTION_INIT)) {
 
+            mPosition = intent.getIntExtra("INTENT_TRACK_POSITION", 0);
+            mTrackItemList = intent.getParcelableArrayListExtra("INTENT_TOP_TEN_LIST");
+
+            if (!mTrackItemList.get(mPosition).getTrackPreview_url().equals(mUrl) ) {
+                mUrl = mTrackItemList.get(mPosition).getTrackPreview_url();
+                mMediaPlayer.stop();
+                mMediaPlayer.reset();
+                mIsStarted=false;
+                mIsPaused=false;
+                mIsCompleted=false;
+                try {
+                    mMediaPlayer.setDataSource(mUrl);
+                }
+                catch (IOException e) {
+                    Log.d(LOG_TAG, "No files found on trying to streaming audio clip");
+                }
+            }
+
+        } else if (intent.getAction().equals(ACTION_NEXT)) {
+            mPosition = mPosition + 1;
+            mPosition = (mPosition > (mTrackItemList.size() - 1)) ? 0 : mPosition;
+            mUrl = mTrackItemList.get(mPosition).getTrackPreview_url();
+            mMediaPlayer.stop();
+            mIsStarted = false;
+            mMediaPlayer.reset();
+            mIsCompleted=false;
+            try {
+                mMediaPlayer.setDataSource(mUrl);
+                mMediaPlayer.prepareAsync();
+            }
+            catch (IOException e) {
+                Log.d(LOG_TAG, "No files found on trying to streaming audio clip");
+            }
+
+        } else if (intent.getAction().equals(ACTION_PREV)) {
+            mPosition = mPosition - 1;
+            mPosition = (mPosition < 0) ? (mTrackItemList.size()-1) : mPosition;
+            mUrl = mTrackItemList.get(mPosition).getTrackPreview_url();
+            mMediaPlayer.stop();
+            mIsStarted = false;
+            mMediaPlayer.reset();
+            mIsCompleted=false;
+            try {
+                mMediaPlayer.setDataSource(mUrl);
+                mMediaPlayer.prepareAsync();
+            }
+            catch (IOException e) {
+                Log.d(LOG_TAG, "No files found on trying to streaming audio clip");
+            }
+
+        } else if (intent.getAction().equals(ACTION_PLAY)) {
+                if (mIsPaused)
+                    playMusicInBackground(mMediaPlayer);
+                else if (mIsCompleted) {
+                    mMediaPlayer.seekTo(0);
+                    mMediaPlayer.start();
+                    mIsCompleted=false;
+                    mIsStarted = true;
+                    mIsPaused = false;
+                } else if (mIsStarted) {
+                    //Do nothing
+                }
+                else
+                    mMediaPlayer.prepareAsync();
+
+        } else if (intent.getAction().equals(ACTION_PLAY_RESUME)) {
+            Intent i = new Intent("DURATION_UPDATED");
+            i.putExtra("duration", mMediaPlayer.getDuration());
+
+            sendBroadcast(i);
+
+        } else if (intent.getAction().equals(ACTION_PAUSE)) {
+
+        }  else if (intent.getAction().equals(ACTION_STOP)) {
+            if (null != mMediaPlayer && mMediaPlayer.isPlaying() && !mIsPaused) {
+                Log.d(LOG_TAG, "DEBUG :: ACTION_STOP received");
+                mMediaPlayer.pause();
+                mIsStarted = false;
+                mPausePosition = mMediaPlayer.getCurrentPosition();
+                mIsPaused = true;
+            }
+
+        } else if (intent.getAction().equals(ACTION_SEEK)) {
+            mMediaPlayer.seekTo(intent.getIntExtra("INTENT_SEEKTO", 0));
+        } else {
+
+        }
+
+        /*
         if (    intent.getAction().equals(ACTION_PLAY) ||
                 intent.getAction().equals(ACTION_NEXT) ||
                 intent.getAction().equals(ACTION_PREV)) {
@@ -139,6 +232,7 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
                 mIsPaused = true;
             }
         }
+        */
 
         return START_STICKY;
     }
@@ -154,6 +248,8 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
         mIsPaused = false;
         mediaPlayer.start();
         mCallback.onMediaPlaying();
+
+        mCallback.onTrackPlaying(mTrackItemList.get(mPosition).getAlbumName(), mTrackItemList.get(mPosition).getAlbumImages().get(0), mTrackItemList.get(mPosition).getName(), mTrackItemList.get(mPosition).getArtists(), mMediaPlayer.getDuration());
         mIsStarted = true;
         /*mBackgroundThread = new Thread(new Runnable() {
             @Override
@@ -168,8 +264,36 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
         return mMediaPlayer.getDuration();
     }
 
+    public String getCurrentAlbumName() {
+        return mTrackItemList.get(mPosition).getAlbumName();
+    }
+
+    public String getAlbumImageUrl () {
+        return mTrackItemList.get(mPosition).getAlbumImages().get(0);
+    }
+
+    public String getTrackName() {
+        return mTrackItemList.get(mPosition).getName();
+    }
+
+    public List<String> getArtists()    {
+        return mTrackItemList.get(mPosition).getArtists();
+    }
+
     public int getPlaybackPosition() {
         return mMediaPlayer.getCurrentPosition();
+    }
+
+    public String getTrackItemList() {
+        return mUrl;
+    }
+
+    public List<TrackItemList> getTopTenList() {
+        return mTrackItemList;
+    }
+
+    public int getTrackListPosition() {
+        return mPosition;
     }
 
     public boolean isMediaPlayerReady() {
@@ -250,6 +374,7 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
                 if (mMediaPlayer == null) initMediaPlayer();
                 else if (!mMediaPlayer.isPlaying()) {
                     mMediaPlayer.start();
+                    mCallback.onTrackPlaying(mTrackItemList.get(mPosition).getAlbumName(), mTrackItemList.get(mPosition).getAlbumImages().get(0), mTrackItemList.get(mPosition).getName(), mTrackItemList.get(mPosition).getArtists(), mMediaPlayer.getDuration());
                     mCallback.onMediaPlaying();
                 }
                 mMediaPlayer.setVolume(1.0f, 1.0f);
@@ -280,6 +405,7 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
     public interface OnPlaybackServiceListener {
         void onMediaCompleted();
         void onMediaPlaying();
+        void onTrackPlaying(String albumName, String albumImageUrl, String trackName, List<String> artistNames, int duration);
     }
 
 
