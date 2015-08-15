@@ -9,4 +9,10 @@
         android:entryValues="@array/pref_lang_entryValues">
 
     </ListPreference>
+
+    <CheckBoxPreference
+        android:key="@string/pref_checkbox_notification_key"
+        android:title="Notifications"
+        android:defaultValue="@string/pref_checkbox_notification_defaul_value"/>
+
 </PreferenceScreen>

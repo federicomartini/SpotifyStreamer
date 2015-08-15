@@ -10,20 +10,28 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
+import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.RelativeLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.example.ttins.spotifystreamer.app.Services.PlaybackService;
 import com.example.ttins.spotifystreamer.app.utils.TrackItemList;
@@ -97,9 +105,14 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
                 Log.d(LOG_TAG, "SeekBar is null on broadcast Ui update");
             }
 
-            if (mPlaybackService.isMediaCompleted() || mPlaybackService.isMediaPlayerPaused()) {
-                mPlayStopTrackImageButton.setImageResource(android.R.drawable.ic_media_play);
+            try {
+                if (mPlaybackService.isMediaCompleted() || mPlaybackService.isMediaPlayerPaused()) {
+                    mPlayStopTrackImageButton.setImageResource(android.R.drawable.ic_media_play);
+                }
+            } catch (NullPointerException e) {
+                Log.d(LOG_TAG, "mPlaybackService is null");
             }
+
 
 
         }
@@ -117,7 +130,7 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
 
             if(mNowPlayingRequest) {
                 mNowPlayingRequest = false;
-                if (mPlaybackService.isMediaStarted() || mPlaybackService.isMediaPlayerPaused()) {
+                if (mPlaybackService.isMediaStarted() || mPlaybackService.isMediaPlayerPaused() || mPlaybackService.isMediaCompleted()) {
                     Intent nowPlayToIntent = new Intent(PlaybackService.ACTION_PLAY_RESUME);
                     nowPlayToIntent.setClass(getActivity(), PlaybackService.class);
                     getActivity().startService(nowPlayToIntent);
@@ -172,6 +185,18 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         //setRetainInstance(true);
+
+    }
+
+    @Override
+    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+        super.onCreateOptionsMenu(menu, inflater);
+        inflater.inflate(R.menu.menu_playback_fragment, menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        return super.onOptionsItemSelected(item);
     }
 
     @Override
@@ -187,6 +212,41 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
         if (null == argsBundle) {
             Log.d(LOG_TAG, "argsBundle is null");
         }
+
+        if(getDialog() != null) {
+            Dialog dialog = getDialog();
+
+            dialog.getWindow().requestFeature(Window.FEATURE_NO_TITLE);
+
+            Toolbar toolbar = (Toolbar) rootView.findViewById(R.id.toolbar);
+            toolbar.setOnMenuItemClickListener(new Toolbar.OnMenuItemClickListener() {
+                @Override
+                public boolean onMenuItemClick(MenuItem item) {
+                    // Handle the menu item
+                    int id = item.getItemId();
+
+                    if (id == R.id.menu_item_share) {
+
+                        if (mPlaybackService.getPreviewUrl() != null && mPlaybackService.getPreviewUrl().length() != 0) {
+                            Intent sendIntent = new Intent();
+                            sendIntent.setAction(Intent.ACTION_SEND);
+                            sendIntent.putExtra(Intent.EXTRA_TEXT, mPlaybackService.getPreviewUrl());
+                            sendIntent.setType("text/plain");
+                            startActivity(Intent.createChooser(sendIntent, "SendTo"));
+                        } else {
+                            Toast.makeText(getActivity(), "No Url found", Toast.LENGTH_SHORT).show();
+                        }
+
+                    }
+                    return true;
+                }
+            });
+            toolbar.inflateMenu(R.menu.menu_playback_fragment);
+            toolbar.setTitle("Playback");
+        }
+
+
+
 
         if (argsBundle.getBoolean("ARG_NOW_PLAYING")) {
             mNowPlayingRequest = true;
@@ -214,6 +274,7 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
         mPlayStopTrackImageButton = (ImageButton) rootView.findViewById(R.id.playback_playstop_track_imagebutton);
         mNextTrackImageButton = (ImageButton) rootView.findViewById(R.id.playback_next_track_imagebutton);
 
+
         if (null != mTrackItemList) {
             artists = mTrackItemList.getArtists();
             String artistsStringList = "";
@@ -237,7 +298,7 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
         }
 
 
-        durationHandler.postDelayed(updateSeekBarTime, 100);
+
         mTimeSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
@@ -255,7 +316,8 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
 
                             Intent seekToIntent = new Intent(PlaybackService.ACTION_SEEK);
                             seekToIntent.putExtra("INTENT_SEEKTO", progress);
-                            getActivity().startService(seekToIntent);
+                            Intent explicitIntent = createExplicitFromImplicitIntent(getActivity(), seekToIntent);
+                            getActivity().startService(explicitIntent);
                         }
                     }
                 } catch (NullPointerException e) {
@@ -353,6 +415,31 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
         return rootView;
     }
 
+    public static Intent createExplicitFromImplicitIntent(Context context, Intent implicitIntent) {
+        // Retrieve all services that can match the given intent
+        PackageManager pm = context.getPackageManager();
+        List<ResolveInfo> resolveInfo = pm.queryIntentServices(implicitIntent, 0);
+
+        // Make sure only one match was found
+        if (resolveInfo == null || resolveInfo.size() != 1) {
+            return null;
+        }
+
+        // Get component info and create ComponentName
+        ResolveInfo serviceInfo = resolveInfo.get(0);
+        String packageName = serviceInfo.serviceInfo.packageName;
+        String className = serviceInfo.serviceInfo.name;
+        ComponentName component = new ComponentName(packageName, className);
+
+        // Create a new intent. Use the old one for extras and such reuse
+        Intent explicitIntent = new Intent(implicitIntent);
+
+        // Set the component to be explicit
+        explicitIntent.setComponent(component);
+
+        return explicitIntent;
+    }
+
     @Override
     public void onSaveInstanceState(Bundle savedInstanceState) {
         super.onSaveInstanceState(savedInstanceState);
@@ -378,6 +465,8 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
             width = (int) getResources().getDimension(R.dimen.dialog_container_width);
             getDialog().getWindow().setLayout(width, height);
         }
+
+        durationHandler.postDelayed(updateSeekBarTime, 100);
 
     }
 

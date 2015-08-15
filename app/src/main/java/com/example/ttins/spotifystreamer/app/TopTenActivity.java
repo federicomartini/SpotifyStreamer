@@ -3,18 +3,24 @@ package com.example.ttins.spotifystreamer.app;
 
 import android.app.FragmentManager;
 import android.app.FragmentTransaction;
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.app.Fragment;
 import android.support.v7.app.ActionBarActivity;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.Window;
+import android.widget.ShareActionProvider;
 import android.widget.Toast;
 
 import com.example.ttins.spotifystreamer.app.Services.PlaybackService;
@@ -28,9 +34,39 @@ public class TopTenActivity extends ActionBarActivity implements TopTenFragment.
     private final static String LOG_TAG = "TopTenActivity";
     private MenuItem mPlayActionButton;
     List<TrackItemList> mTracks = new ArrayList<>();
+    private ShareActionProvider mShareActionProvider;
+    private PlaybackService mPlaybackService;
+    private boolean mBound;
     public static final String ACTION_NOW_PLAY = "com.example.ttins.spotifystreamer.MainActivity.INTENT_NOW_PLAYING_TRACK";
 
     private final static String LIST_KEY = "PARCEABLE_LIST_KEY";
+
+    private ServiceConnection mConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            PlaybackService.PlaybackBinder binder = (PlaybackService.PlaybackBinder) service;
+            mPlaybackService = binder.getService();
+            mBound=true;
+
+            Log.d(LOG_TAG, "Bound to Playback service");
+
+            if (mPlaybackService.getPreviewUrl() != null && mPlaybackService.getPreviewUrl().length() != 0) {
+                Intent sendIntent = new Intent();
+                sendIntent.setAction(Intent.ACTION_SEND);
+                sendIntent.putExtra(Intent.EXTRA_TEXT, mPlaybackService.getPreviewUrl());
+                sendIntent.setType("text/plain");
+                startActivity(Intent.createChooser(sendIntent, "SendTo"));
+            } else {
+                Toast.makeText(getApplicationContext(), "No Url found", Toast.LENGTH_SHORT).show();
+            }
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            mBound=false;
+            Log.d(LOG_TAG, "Unbound to Playback service");
+        }
+    };
 
     @Override
     public void onTopTenFragmentItemClick(@NonNull TrackItemList trackItemList, @NonNull int position){
@@ -66,6 +102,7 @@ public class TopTenActivity extends ActionBarActivity implements TopTenFragment.
         return true;
     }
 
+
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         // Handle action bar item clicks here. The action bar will
@@ -87,6 +124,25 @@ public class TopTenActivity extends ActionBarActivity implements TopTenFragment.
 
         }
 
+        if (id == R.id.menu_item_share) {
+            if (null == mPlaybackService) {
+                Intent intent = new Intent(this, PlaybackService.class);
+                if (!bindService(intent, mConnection, Context.BIND_AUTO_CREATE)) {
+                    Log.d(LOG_TAG, "Bind to Service failed");
+                }
+            } else {
+                if (mPlaybackService.getPreviewUrl() != null && mPlaybackService.getPreviewUrl().length() != 0) {
+                    Intent sendIntent = new Intent();
+                    sendIntent.setAction(Intent.ACTION_SEND);
+                    sendIntent.putExtra(Intent.EXTRA_TEXT, mPlaybackService.getPreviewUrl());
+                    sendIntent.setType("text/plain");
+                    startActivity(Intent.createChooser(sendIntent, "SendTo"));
+                } else {
+                    Toast.makeText(this, "No Url found", Toast.LENGTH_SHORT).show();
+                }
+            }
+        }
+
         return super.onOptionsItemSelected(item);
     }
 
@@ -100,6 +156,7 @@ public class TopTenActivity extends ActionBarActivity implements TopTenFragment.
     @Override
     public void onResume() {
         super.onResume();
+
     }
 
     @Override
@@ -138,6 +195,14 @@ public class TopTenActivity extends ActionBarActivity implements TopTenFragment.
 
     }
 
+    @Override
+    public void onPause() {
+        super.onPause();
+        if (mBound) {
+            unbindService(mConnection);
+            mBound = false;
+        }
+    }
 
 
     /* Customize the toolbar */

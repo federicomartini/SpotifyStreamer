@@ -13,12 +13,14 @@ import android.os.Binder;
 import android.os.IBinder;
 import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
+import android.support.v4.view.MenuItemCompat;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.ShareActionProvider;
 import android.widget.Toast;
 
 import com.example.ttins.spotifystreamer.app.Services.PlaybackService;
@@ -41,6 +43,8 @@ public class MainActivity extends ActionBarActivity implements MainActivityFragm
     private PlaybackService mPlaybackService;
     private boolean mBound;
     MenuItem mPlayActionButton;
+    private ShareActionProvider mShareActionProvider;
+
     public static final String ACTION_NOW_PLAY = "com.example.ttins.spotifystreamer.MainActivity.INTENT_NOW_PLAYING_TRACK";
     private ServiceConnection mConnection = new ServiceConnection() {
         @Override
@@ -49,10 +53,18 @@ public class MainActivity extends ActionBarActivity implements MainActivityFragm
             mPlaybackService = binder.getService();
             mBound=true;
 
-            if (mPlaybackService.isMediaPlayerReady())
-                mPlaybackService.getPlaybackServiceIntent();
-
             Log.d(LOG_TAG, "Bound to Playback service");
+
+            if (mPlaybackService.getPreviewUrl() != null && mPlaybackService.getPreviewUrl().length() != 0) {
+                Intent sendIntent = new Intent();
+
+                sendIntent.setAction(Intent.ACTION_SEND);
+                sendIntent.putExtra(Intent.EXTRA_TEXT, mPlaybackService.getPreviewUrl());
+                sendIntent.setType("text/plain");
+                startActivity(Intent.createChooser(sendIntent, "SendTo"));
+            } else {
+                Toast.makeText(getApplicationContext(), "No Url found", Toast.LENGTH_SHORT).show();
+            }
 
         }
 
@@ -170,7 +182,7 @@ public class MainActivity extends ActionBarActivity implements MainActivityFragm
     @Override
     public void onStop() {
         super.onStop();
-        if (mBound && !mTwoPane) {
+        if (mBound) {
             unbindService(mConnection);
             mBound = false;
         }
@@ -186,11 +198,9 @@ public class MainActivity extends ActionBarActivity implements MainActivityFragm
 
         mPlayActionButton = menu.findItem(R.id.now_playing_action_button);
 
-
-
-
         return true;
     }
+
 
     @Override
     public boolean onPrepareOptionsMenu(Menu menu) {
@@ -245,6 +255,40 @@ public class MainActivity extends ActionBarActivity implements MainActivityFragm
                 startActivity(intent);
                 return true;
             }
+        }
+
+        if (id == R.id.menu_item_share) {
+            if (mTwoPane) {
+                if (null == mPlaybackService) {
+                    Intent intent = new Intent(this, PlaybackService.class);
+                    if (!bindService(intent, mConnection, Context.BIND_AUTO_CREATE)) {
+                        Log.d(LOG_TAG, "Bind to Service failed");
+                    }
+                } else {
+                    if (mPlaybackService.getPreviewUrl() != null && mPlaybackService.getPreviewUrl().length() != 0) {
+                        Intent sendIntent = new Intent();
+                        sendIntent.setAction(Intent.ACTION_SEND);
+                        sendIntent.putExtra(Intent.EXTRA_TEXT, mPlaybackService.getPreviewUrl());
+                        sendIntent.setType("text/plain");
+                        startActivity(Intent.createChooser(sendIntent, "SendTo"));
+                    } else {
+                        Toast.makeText(this, "No Url found", Toast.LENGTH_SHORT).show();
+                    }
+
+                }
+            } else {
+                if (mPlaybackService.getPreviewUrl() != null && mPlaybackService.getPreviewUrl().length() != 0) {
+                    Intent sendIntent = new Intent();
+                    sendIntent.setAction(Intent.ACTION_SEND);
+                    sendIntent.putExtra(Intent.EXTRA_TEXT, mPlaybackService.getPreviewUrl());
+                    sendIntent.setType("text/plain");
+                    startActivity(Intent.createChooser(sendIntent, "SendTo"));
+                } else {
+                    Toast.makeText(this, "No Url found", Toast.LENGTH_SHORT).show();
+                }
+
+            }
+
         }
 
         return super.onOptionsItemSelected(item);

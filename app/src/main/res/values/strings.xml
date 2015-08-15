@@ -6,6 +6,8 @@
     <string name="searchview_query_hint">Search for an artist or group</string>
     <string name="pref_list_lang_key">list_lang_key</string>
     <string name="pref_list_lang_default_value">IT</string>
+    <string name="pref_checkbox_notification_key">checkbox_notification_key</string>
+    <string name="pref_checkbox_notification_defaul_value">true</string>
     <string name="settings_activity_name">Preferences</string>
     <string name="listview_image_content_description_followers">Followers</string>
     <string name="listview_image_content_description_popularity">Popularity</string>

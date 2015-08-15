@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="horizontal"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/colorSecondaryText">
+
+    <RelativeLayout
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="3">
+
+        <ImageView
+            android:id="@+id/notification_image"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:adjustViewBounds="true"
+            android:layout_marginRight="5dp"/>
+
+        <TextView
+            android:id="@+id/track_title_notification_textview"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_toRightOf="@id/notification_image"
+            android:gravity="center_vertical"/>
+
+        <TextView
+            android:id="@+id/album_title_notification_textview"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_toRightOf="@id/notification_image"
+            android:layout_below="@id/track_title_notification_textview" />
+
+    </RelativeLayout>
+
+    <RelativeLayout
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="2"
+        android:orientation="horizontal">
+
+        <ImageButton
+            android:id="@+id/prev_button_notification"
+            android:src="@android:drawable/ic_media_previous"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_alignParentLeft="true"
+            android:layout_toRightOf="@+id/playstop_button_notification"
+            android:layout_marginLeft="5dp"
+            android:layout_marginRight="5dp"/>
+
+        <ImageButton
+            android:id="@+id/playstop_button_notification"
+            android:src="@android:drawable/ic_media_play"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:gravity="center_horizontal"
+            android:layout_alignParentTop="true"
+            android:layout_centerHorizontal="true" />
+
+        <ImageButton
+            android:id="@+id/next_button_notification"
+            android:src="@android:drawable/ic_media_next"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_alignParentRight="true"
+            android:layout_marginRight="5dp"/>
+
+    </RelativeLayout>
+
+</LinearLayout>
