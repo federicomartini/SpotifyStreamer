@@ -217,7 +217,7 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
                 mCallback.onMediaCompleted();
                 Log.d(LOG_TAG, "Media completed");
 
-                makeNotification(mEnableNotify, mRemoteView, mBuilder, mNotificationManager, mNotificationId, ACTION_PLAY);
+                makeNotification(mEnableNotify, mRemoteView, mBuilder, mNotificationManager, mNotificationId, ACTION_STOP);
 
             }
         });
@@ -257,6 +257,12 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
         if (intent.getAction().equals(ACTION_ENABLE_NOTIFY)) {
             mEnableNotify=true;
             initNotification();
+
+            //If track is in streaming we need to update the Notification properly
+            if (mIsStarted)
+                makeNotification(mEnableNotify, mRemoteView, mBuilder, mNotificationManager, mNotificationId, ACTION_STOP);
+            else
+                makeNotification(mEnableNotify, mRemoteView, mBuilder, mNotificationManager, mNotificationId, ACTION_PLAY);
 
         } else if (intent.getAction().equals(ACTION_DISABLE_NOTIFY)) {
             mEnableNotify=false;
@@ -354,6 +360,7 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
                 mMediaPlayer.pause();
                 mPausePosition = mMediaPlayer.getCurrentPosition();
                 setMediaPlayerStatus(MP_STATUS_PAUSE);
+                mCallback.onMediaPause();
 
                 //TODO
                 makeNotification(mEnableNotify, mRemoteView, mBuilder, mNotificationManager, mNotificationId, ACTION_STOP);
@@ -544,6 +551,7 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
     public interface OnPlaybackServiceListener {
         void onMediaCompleted();
         void onMediaPlaying();
+        void onMediaPause();
         void onTrackPlaying(String albumName, String albumImageUrl, String trackName, List<String> artistNames, int duration);
     }
 

@@ -71,11 +71,8 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
     private List<TrackItemList> mTracks = new ArrayList<TrackItemList>();
     private TrackItemList mTrackItemList;
     private OnFragmentClickListener mCallback;
-    private boolean mIsPlay;
     private Handler durationHandler = new Handler();
     private double mTimeElapsed;
-    private boolean mIsSeekBarTouched = true;;
-    private boolean mIsNewTrack;
     private String tempAlbumName;
     private String tempAlbumImageUrl;
     private String tempTrackName;
@@ -99,7 +96,8 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
 
             try {
                 mTimeSeekBar.setMax(mDuration);
-                mTimeSeekBar.setProgress(mPlaybackService.getPlaybackPosition());
+                updateSeekBarAndText(mTimeSeekBar, mStartTimeTextView, mDuration, mPlaybackService.getPlaybackPosition());
+                //mTimeSeekBar.setProgress(mPlaybackService.getPlaybackPosition());
             }
             catch (NullPointerException e) {
                 Log.d(LOG_TAG, "SeekBar is null on broadcast Ui update");
@@ -144,9 +142,9 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
                         mSongTextView.setText(mPlaybackService.getTrackName());
                     }
                 } else {
-                    dismiss();
                     mCallback.onFragmentDismiss();
                     durationHandler.removeCallbacks(updateSeekBarTime);
+                    dismiss();
                 }
             } else {
                 mStartTimeTextView.setText(START_TIME);
@@ -165,12 +163,13 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
         }
     };
 
+
     public PlaybackActivityFragment() {
     }
 
+    @Override
     public void onStart() {
         super.onStart();
-
 
         if (null == mPlaybackService) {
             Intent intent = new Intent(getActivity(), PlaybackService.class);
@@ -178,7 +177,6 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
                 Log.d(LOG_TAG, "Bind to Service failed");
             }
         }
-
     }
 
     @Override
@@ -215,38 +213,13 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
 
         if(getDialog() != null) {
             Dialog dialog = getDialog();
-
             dialog.getWindow().requestFeature(Window.FEATURE_NO_TITLE);
-
-            Toolbar toolbar = (Toolbar) rootView.findViewById(R.id.toolbar);
-            toolbar.setOnMenuItemClickListener(new Toolbar.OnMenuItemClickListener() {
-                @Override
-                public boolean onMenuItemClick(MenuItem item) {
-                    // Handle the menu item
-                    int id = item.getItemId();
-
-                    if (id == R.id.menu_item_share) {
-
-                        if (mPlaybackService.getPreviewUrl() != null && mPlaybackService.getPreviewUrl().length() != 0) {
-                            Intent sendIntent = new Intent();
-                            sendIntent.setAction(Intent.ACTION_SEND);
-                            sendIntent.putExtra(Intent.EXTRA_TEXT, mPlaybackService.getPreviewUrl());
-                            sendIntent.setType("text/plain");
-                            startActivity(Intent.createChooser(sendIntent, "SendTo"));
-                        } else {
-                            Toast.makeText(getActivity(), "No Url found", Toast.LENGTH_SHORT).show();
-                        }
-
-                    }
-                    return true;
-                }
-            });
-            toolbar.inflateMenu(R.menu.menu_playback_fragment);
-            toolbar.setTitle("Playback");
         }
 
+        ImageButton imageButtonShare = (ImageButton) rootView.findViewById(R.id.share_imagebutton);
 
-
+        /* Handling Click on Share Button */
+        onShareButtonClickHandler(imageButtonShare);
 
         if (argsBundle.getBoolean("ARG_NOW_PLAYING")) {
             mNowPlayingRequest = true;
@@ -297,8 +270,6 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
             }
         }
 
-
-
         mTimeSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
@@ -307,12 +278,6 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
                         mPlaybackService.setPlaybackPosition(progress);
 
                         if(mPlaybackService.isMediaCompleted()) {
-
-                            /*Log.d(LOG_TAG, "DEBUG :: Media completed. Restarting the track.");
-                            Intent serviceIntent = new Intent(PlaybackService.ACTION_PLAY);
-                            serviceIntent.putExtra("INTENT_PREVIEW_URL", mTrackItemList.getTrackPreview_url());
-                            serviceIntent.setClass(getActivity(), PlaybackService.class);
-                            getActivity().startService(serviceIntent);*/
 
                             Intent seekToIntent = new Intent(PlaybackService.ACTION_SEEK);
                             seekToIntent.putExtra("INTENT_SEEKTO", progress);
@@ -323,7 +288,6 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
                 } catch (NullPointerException e) {
                     Log.d(LOG_TAG, "PlaybackService Null");
                 }
-
             }
 
             @Override
@@ -340,11 +304,6 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
             public void onClick(View v) {
                 String stringAction;
 
-                /*if(!mPlaybackService.isMediaCompleted())
-                    mPlaybackService.setPlaybackPosition(mPlaybackService.getPlaybackPosition());
-                else
-                    mPlaybackService.setPlaybackPosition(0);*/
-
                 if (mPlaybackService.isMediaStarted()) {
                     stringAction = PlaybackService.ACTION_STOP;
                     Log.d(LOG_TAG, "ACTION_STOP received");
@@ -356,9 +315,6 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
                 }
 
                 Intent serviceIntent = new Intent(stringAction);
-                /*serviceIntent.putExtra("INTENT_PREVIEW_URL", mTrackItemList.getTrackPreview_url());
-                serviceIntent.putExtra("INTENT_PREVIEW_URL", mTrackItemList.getTrackPreview_url());
-                serviceIntent.putParcelableArrayListExtra("INTENT_TOP_TEN_LIST", (ArrayList<TrackItemList>) mTracks);*/
                 serviceIntent.setClass(getActivity(), PlaybackService.class);
                 getActivity().startService(serviceIntent);
             }
@@ -368,23 +324,8 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
             @Override
             public void onClick(View v) {
                 Intent serviceIntent = new Intent(PlaybackService.ACTION_PREV);
-                /*mPosition = mPosition - 1;
-                if (mPosition < 0) mPosition = mTracks.size() - 1;
-                mTrackItemList = mTracks.get(mPosition);
-                serviceIntent.putExtra("INTENT_PREVIEW_URL", mTrackItemList.getTrackPreview_url());*/
                 serviceIntent.setClass(getActivity(), PlaybackService.class);
                 getActivity().startService(serviceIntent);
-
-                /*if (mTrackItemList != null) {
-                    mAlbumTextView.setText(mTrackItemList.getAlbumName());
-                    Picasso.with(getActivity()).load(mTrackItemList.getAlbumImages().get(0)).into(mAlbumImageView);
-                    mSongTextView.setText(mTrackItemList.getName());
-                    mTimeSeekBar.setMax(mPlaybackService.getDuration());
-                    mPlayStopTrackImageButton.setImageResource(android.R.drawable.ic_media_pause);
-
-                } else {
-                    Log.d(LOG_TAG, "TrackItemList is null");
-                }*/
             }
         });
 
@@ -392,27 +333,53 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
             @Override
             public void onClick(View v) {
                 Intent serviceIntent = new Intent(PlaybackService.ACTION_NEXT);
-                /*mPosition = mPosition + 1;
-                if (mPosition >= mTracks.size()) mPosition = 0;
-                mTrackItemList = mTracks.get(mPosition);
-                serviceIntent.putExtra("INTENT_PREVIEW_URL", mTrackItemList.getTrackPreview_url());*/
                 serviceIntent.setClass(getActivity(), PlaybackService.class);
                 getActivity().startService(serviceIntent);
-
-                /*if (mTrackItemList != null) {
-                    mAlbumTextView.setText(mTrackItemList.getAlbumName());
-                    Picasso.with(getActivity()).load(mTrackItemList.getAlbumImages().get(0)).into(mAlbumImageView);
-                    mSongTextView.setText(mTrackItemList.getName());
-                    mTimeSeekBar.setMax(mPlaybackService.getDuration());
-                    mPlayStopTrackImageButton.setImageResource(android.R.drawable.ic_media_pause);
-
-                } else {
-                    Log.d(LOG_TAG, "TrackItemList is null");
-                }*/
             }
         });
 
         return rootView;
+    }
+
+    private void updateSeekBarAndText(SeekBar seekBar, TextView startTextView, int duration, int currentPosition) {
+        if (seekBar != null) {
+            seekBar.setMax(duration);
+            seekBar.setProgress(currentPosition);
+        } else {
+            Log.d(LOG_TAG, "SeekBar is null. Can't update it.");
+        }
+
+        if (startTextView != null) {
+            String sCurrent = String.format("%d:%d",
+                    TimeUnit.MILLISECONDS.toMinutes(currentPosition),
+                    TimeUnit.MILLISECONDS.toSeconds(currentPosition) -
+                            TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(currentPosition))
+            );
+
+            startTextView.setText(sCurrent);
+
+        } else {
+            Log.d(LOG_TAG, "TextView for current Position is null. Can't update it.");
+        }
+
+    }
+
+    private void onShareButtonClickHandler(ImageButton imageButton) {
+
+        imageButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (mPlaybackService.getPreviewUrl() != null && mPlaybackService.getPreviewUrl().length() != 0) {
+                    Intent sendIntent = new Intent();
+                    sendIntent.setAction(Intent.ACTION_SEND);
+                    sendIntent.putExtra(Intent.EXTRA_TEXT, mPlaybackService.getPreviewUrl());
+                    sendIntent.setType("text/plain");
+                    startActivity(Intent.createChooser(sendIntent, "SendTo"));
+                } else {
+                    Toast.makeText(getActivity(), "No Url found", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
     }
 
     public static Intent createExplicitFromImplicitIntent(Context context, Intent implicitIntent) {
@@ -466,6 +433,9 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
             getDialog().getWindow().setLayout(width, height);
         }
 
+        if(mPlaybackService != null)
+            updateSeekBarAndText(mTimeSeekBar, mStartTimeTextView, mDuration, mPlaybackService.getPlaybackPosition());
+
         durationHandler.postDelayed(updateSeekBarTime, 100);
 
     }
@@ -478,7 +448,8 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
                 if (null != mPlaybackService ) {
                     if (!mPlaybackService.isMediaCompleted() && !mPlaybackService.isMediaPlayerPaused()) {
                         mTimeElapsed = mPlaybackService.getPlaybackPosition();
-                        mTimeSeekBar.setProgress((int) mTimeElapsed);
+                        //mTimeSeekBar.setProgress((int) mTimeElapsed);
+                        updateSeekBarAndText(mTimeSeekBar, mStartTimeTextView, mDuration, mPlaybackService.getPlaybackPosition());
                     }
                 }
             } catch (NullPointerException e) {
@@ -560,6 +531,16 @@ public class PlaybackActivityFragment extends DialogFragment implements Playback
             Log.d(LOG_TAG, "onMediaPlaying called");
         } else {
             Log.d(LOG_TAG, "onMediaPlaying found null button");
+        }
+    }
+
+    @Override
+    public void onMediaPause() {
+        if (mPlayStopTrackImageButton != null) {
+            mPlayStopTrackImageButton.setImageResource(android.R.drawable.ic_media_play);
+            Log.d(LOG_TAG, "onMediaPause called");
+        } else {
+            Log.d(LOG_TAG, "onMediaPause found null button");
         }
     }
 

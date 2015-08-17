@@ -3,6 +3,7 @@ package com.example.ttins.spotifystreamer.app;
 import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.graphics.Color;
 import android.os.SystemClock;
 import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
@@ -17,12 +18,15 @@ import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
+import android.widget.SearchView;
+import android.widget.TextView;
 import android.widget.Toast;
 import com.example.ttins.spotifystreamer.app.utils.KeyboardUtil;
 import com.example.ttins.spotifystreamer.app.utils.MyArtist;
 import com.example.ttins.spotifystreamer.app.utils.ResultListAdapter;
 import com.example.ttins.spotifystreamer.app.utils.TrackItemList;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -46,7 +50,7 @@ public class MainActivityFragment extends Fragment {
 
     ResultListAdapter mResultListAdapter;
     ListView mListView;
-    EditText mEditText;
+    SearchView mSearchView;
     List<Artist> mResultListArtist;
     List<TrackItemList> mTracks = new ArrayList<>();
     private long mLastClickTime = 0; // variable to track event time
@@ -91,18 +95,18 @@ public class MainActivityFragment extends Fragment {
         //Loading and declaring UI fragment components
         View viewRoot = inflater.inflate(R.layout.fragment_main, container, false);
         //Views references
-        Button buttonClearText = (Button) viewRoot.findViewById(R.id.button_clear_search);
-        mEditText = (EditText) viewRoot.findViewById(R.id.edittext_search_artist);
+        mSearchView = (SearchView) viewRoot.findViewById(R.id.fragment_main_searchview);
         mListView = (ListView) viewRoot.findViewById(R.id.listView_artist);
         mResultListAdapter = new ResultListAdapter(getActivity(), R.layout.list_item_artist, new ArrayList<MyArtist>());
         mListView.setAdapter(mResultListAdapter);
 
-        /**** Click Handlers ****/
-        /* Clear Edit Text */
-        buttonClearClick(buttonClearText);
+        for (TextView textView : findChildrenByClass(mSearchView, TextView.class)) {
+            textView.setTextColor(getResources().getColor(R.color.colorPrimaryText));
+        }
 
-        /* Handling soft keyboard Enter Button click */
-        searchTextEnterClick(mEditText);
+        /**** Click Handlers ****/
+        /* Handling Search View click */
+        searchTextEnterClick(mSearchView);
 
         /* Artist list item click */
         artistListItemClick(mListView, mTracks);
@@ -112,6 +116,28 @@ public class MainActivityFragment extends Fragment {
             showArtists(mResultListArtist);
 
         return viewRoot;
+    }
+
+    /* Helper method to find a Vie within a Class */
+    public static <V extends View> Collection<V> findChildrenByClass(ViewGroup viewGroup, Class<V> clazz) {
+
+        return gatherChildrenByClass(viewGroup, clazz, new ArrayList<V>());
+    }
+
+    private static <V extends View> Collection<V> gatherChildrenByClass(ViewGroup viewGroup, Class<V> clazz, Collection<V> childrenFound) {
+
+        for (int i = 0; i < viewGroup.getChildCount(); i++)
+        {
+            final View child = viewGroup.getChildAt(i);
+            if (clazz.isAssignableFrom(child.getClass())) {
+                childrenFound.add((V)child);
+            }
+            if (child instanceof ViewGroup) {
+                gatherChildrenByClass((ViewGroup) child, clazz, childrenFound);
+            }
+        }
+
+        return childrenFound;
     }
 
     /* Artist Item click handler */
@@ -175,6 +201,45 @@ public class MainActivityFragment extends Fragment {
         });
     }
 
+    protected void searchTextEnterClick(SearchView searchView) {
+        final SearchView localSearchView = searchView;
+
+        localSearchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+            @Override
+            public boolean onQueryTextSubmit(String query) {
+                SpotifyApi api = new SpotifyApi();
+                SpotifyService spotify = api.getService();
+                KeyboardUtil.hideKeyboard(getActivity());
+
+                spotify.searchArtists(query, new Callback<ArtistsPager>() {
+                    @Override
+                    public void success(ArtistsPager artistsPager, Response response) {
+                        mResultListArtist = artistsPager.artists.items;
+
+                        getActivity().runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                showArtists(mResultListArtist);
+                            }
+                        });
+                    }
+
+                    @Override
+                    public void failure(RetrofitError error) {
+                        Log.d("Artist failure", error.toString());
+                    }
+                });
+                return true;
+            }
+
+
+            @Override
+            public boolean onQueryTextChange(String newText) {
+                return false;
+            }
+        });
+    }
+
     /* Search Button click handler (Enter button of the Soft Keyboard) */
     protected void searchTextEnterClick(EditText editText) {
 
@@ -222,23 +287,6 @@ public class MainActivityFragment extends Fragment {
         });
     }
 
-    /* Clear button click handler */
-    protected void buttonClearClick(Button button) {
-        button.setOnClickListener(new Button.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                // Preventing multiple clicks, using threshold of 2 seconds
-                if (SystemClock.elapsedRealtime() - mLastClickTime < 2000) {
-                    return;
-                }
-                mLastClickTime = SystemClock.elapsedRealtime();
-
-                mEditText.setText("");
-                InputMethodManager inputMgr = (InputMethodManager) getActivity().getSystemService(Context.INPUT_METHOD_SERVICE);
-                inputMgr.toggleSoftInput(0, 0);
-            }
-        });
-    }
 
     /* Populate Top Ten Tracks list */
     private void populateTopTenTracks(List<Track> tracks) {

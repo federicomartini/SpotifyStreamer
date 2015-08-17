@@ -4,7 +4,7 @@
     android:orientation="horizontal"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/colorSecondaryText">
+    android:background="@color/primary_dark_material_dark">
 
     <RelativeLayout
         android:layout_width="0dp"

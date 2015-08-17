@@ -17,4 +17,5 @@
     <dimen name="fragment_container_width">350dp</dimen>
     <dimen name="dialog_container_height">390dp</dimen>
     <dimen name="dialog_container_width">380dp</dimen>
+    <dimen name="fragment_main_activity_margin_right">10dp</dimen>
 </resources>

@@ -31,6 +31,7 @@
                 android:layout_centerHorizontal="true"
                 android:src="@drawable/unknown_artist" />
 
+
             <TextView
                 android:id="@+id/textview_top_title_topten"
                 style="@style/TextViewTopTenTitle"

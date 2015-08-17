@@ -57,32 +57,44 @@
         android:gravity="center"
         android:layout_marginBottom="5dp" />
 
-
-    <SeekBar
-        android:id="@+id/playback_time_seekbar"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1" />
-
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:layout_marginBottom="5dp">
+        android:layout_weight="2"
+        android:orientation="horizontal">
+
+        <ImageButton
+            android:id="@+id/share_imagebutton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentRight="true"
+            android:src="@android:drawable/ic_menu_share"
+            android:background="@null"/>
+
+        <SeekBar
+            android:id="@+id/playback_time_seekbar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_alignParentTop="true"
+            android:layout_toLeftOf="@id/share_imagebutton"/>
 
         <TextView
             android:id="@+id/start_time_textview"
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
-            android:layout_alignParentLeft="true"/>
+            android:layout_alignParentLeft="true"
+            android:layout_below="@id/playback_time_seekbar" />
 
         <TextView
             android:id="@+id/stop_time_textview"
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
-            android:layout_alignParentRight="true"/>
-
+            android:layout_alignParentBottom="true"
+            android:layout_alignRight="@+id/playback_time_seekbar"
+            android:layout_alignEnd="@+id/playback_time_seekbar"
+            android:layout_below="@id/playback_time_seekbar"/>
     </RelativeLayout>
+
 
     <LinearLayout
         android:layout_width="match_parent"

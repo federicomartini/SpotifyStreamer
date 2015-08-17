@@ -3,12 +3,6 @@
     xmlns:tools="http://schemas.android.com/tools"
     tools:context="com.example.ttins.spotifystreamer.app.PlaybackActivity">
 
-    <item
-        android:id="@+id/menu_item_share"
-        app:showAsAction="ifRoom"
-        android:title="Share"
-        android:icon="@drawable/abc_ic_menu_share_mtrl_alpha" />
-
     <item android:id="@+id/action_settings"
         android:title="@string/action_settings"
         android:orderInCategory="100"

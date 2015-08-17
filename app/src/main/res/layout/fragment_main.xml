@@ -5,45 +5,17 @@
     android:orientation="vertical"
     tools:context=".MainActivityFragment">
 
-    <FrameLayout
-        android:layout_width="match_parent"
-        android:layout_height="5dp">
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:background="@drawable/toolbar_dropshadow_to_white" />
-    </FrameLayout>
-
-    <RelativeLayout
+    <SearchView
+        android:id="@+id/fragment_main_searchview"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1.5"
-        android:layout_marginTop="10dp">
-
-        <android.support.design.widget.TextInputLayout
-            android:id="@+id/fragment_main_text_input_layout"
-            style="@style/FragmentMainTextInputLayout">
-
-            <EditText
-                style="@style/EditTextSearch"
-                android:id="@+id/edittext_search_artist"/>
-
-        </android.support.design.widget.TextInputLayout>
-
-        <Button
-            android:id="@+id/button_clear_search"
-            style="@style/ButtonClearText" />
-
-    </RelativeLayout>
+        android:layout_weight="1"
+        android:iconifiedByDefault="false"/>
 
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="10">
-
-        <ImageView
-            style="@style/ImageViewBackgorundFragmentMain" />
 
         <ListView
             style="@style/ListView"

@@ -68,8 +68,6 @@ public class MainActivity extends ActionBarActivity implements MainActivityFragm
 
             if (mPlaybackService.getPreviewUrl() != null && mPlaybackService.getPreviewUrl().length() != 0) {
                 sendShareIntent(mPlaybackService.getPreviewUrl());
-            } else {
-                Toast.makeText(getApplicationContext(), "No Url found", Toast.LENGTH_SHORT).show();
             }
 
         }
@@ -247,6 +245,7 @@ public class MainActivity extends ActionBarActivity implements MainActivityFragm
                 }
 
             } else {
+
                 Intent intent = new Intent(ACTION_NOW_PLAY);
                 startActivity(intent);
                 return true;
@@ -304,6 +303,6 @@ public class MainActivity extends ActionBarActivity implements MainActivityFragm
     }
 
     public void onFragmentDismiss() {
-        Toast.makeText(this, "No song is playing in background", Toast.LENGTH_SHORT).show();
+        Toast.makeText(MainActivity.this, "No song is playing in background", Toast.LENGTH_SHORT).show();
     }
 }
