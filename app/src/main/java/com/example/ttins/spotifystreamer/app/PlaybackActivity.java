@@ -24,7 +24,15 @@ import java.util.List;
 public class PlaybackActivity extends ActionBarActivity implements PlaybackActivityFragment.OnFragmentClickListener {
 
     private final static String LOG_TAG = "PlaybackActivity";
-    TextView mArtistTextView;
+    public static final String FRAG_ARG_TOP_TEN_LIST = "ARG_TOP_TEN_LIST";
+    public static final String FRAG_ARG_TRACK = "ARG_TRACK";
+    public static final String FRAG_ARG_TRACK_POSITION = "ARG_TRACK_POSITION";
+    public static final String FRAG_ARG_NOW_PLAYING = "ARG_NOW_PLAYING";
+    public static final String INTENT_TRACK_POSITION = "INTENT_TRACK_POSITION";
+    public static final String INTENT_TOP_TEN_LIST = "INTENT_TOP_TEN_LIST";
+    public static final String BUNDLE_TRACK = "BUNDLE_TRACK";
+    public static final String INTENT_TRACK_BUNDLE = "INTENT_TRACK_BUNDLE";
+
     private TrackItemList mTrackItemList;
     private int mPosition;
     private List<TrackItemList> mTracks = new ArrayList<TrackItemList>();
@@ -46,12 +54,12 @@ public class PlaybackActivity extends ActionBarActivity implements PlaybackActiv
         Intent intent = getIntent();
 
         //Check if the Intent comes from the Now Playing button or from Top Ten Item Click
-        if (!intent.hasExtra("INTENT_TRACK_BUNDLE")) {
+        if (!intent.hasExtra(INTENT_TRACK_BUNDLE)) {
             //do nothing
         } else {
-            mTrackItemList =  intent.getBundleExtra("INTENT_TRACK_BUNDLE").getParcelable("BUNDLE_TRACK");
-            mPosition = intent.getBundleExtra("INTENT_TRACK_BUNDLE").getInt("INTENT_TRACK_POSITION");
-            mTracks = intent.getBundleExtra("INTENT_TRACK_BUNDLE").getParcelableArrayList("INTENT_TOP_TEN_LIST");
+            mTrackItemList =  intent.getBundleExtra(INTENT_TRACK_BUNDLE).getParcelable(BUNDLE_TRACK);
+            mPosition = intent.getBundleExtra(INTENT_TRACK_BUNDLE).getInt(INTENT_TRACK_POSITION);
+            mTracks = intent.getBundleExtra(INTENT_TRACK_BUNDLE).getParcelableArrayList(INTENT_TOP_TEN_LIST);
 
             if (null == mTrackItemList)
                 Log.d(LOG_TAG, "trackItemList is null");
@@ -63,12 +71,12 @@ public class PlaybackActivity extends ActionBarActivity implements PlaybackActiv
             Fragment playbackFragment = new PlaybackActivityFragment();
             Bundle bundle = new Bundle();
 
-            if (intent.hasExtra("INTENT_TRACK_BUNDLE")) {
-                bundle.putParcelable("ARG_TRACK", mTrackItemList);
-                bundle.putParcelableArrayList("ARG_TOP_TEN_LIST", (ArrayList<TrackItemList>) mTracks);
-                bundle.putInt("ARG_TRACK_POSITION", mPosition);
+            if (intent.hasExtra(INTENT_TRACK_BUNDLE)) {
+                bundle.putParcelable(FRAG_ARG_TRACK, mTrackItemList);
+                bundle.putParcelableArrayList(FRAG_ARG_TOP_TEN_LIST, (ArrayList<TrackItemList>) mTracks);
+                bundle.putInt(FRAG_ARG_TRACK_POSITION, mPosition);
             } else {
-                bundle.putBoolean("ARG_NOW_PLAYING", true);
+                bundle.putBoolean(FRAG_ARG_NOW_PLAYING, true);
             }
 
             playbackFragment.setArguments(bundle);
@@ -102,9 +110,6 @@ public class PlaybackActivity extends ActionBarActivity implements PlaybackActiv
         return super.onOptionsItemSelected(item);
     }
 
-    public void onFragmentPlayClick() {
-
-    };
 
     /* Customize the toolbar */
     private boolean setToolbar(Toolbar toolbar) {
@@ -130,11 +135,6 @@ public class PlaybackActivity extends ActionBarActivity implements PlaybackActiv
         return true;
     }
 
-    public void onFragmentStopClick() {};
-
-    public void onFragmentPrevClick() {};
-
-    public void onFragmentNextClick() {};
 
     public void onFragmentDismiss() {
         this.finish();

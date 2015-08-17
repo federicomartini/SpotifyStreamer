@@ -1,20 +1,13 @@
 package com.example.ttins.spotifystreamer.app.Services;
 
-import android.app.Notification;
-import android.app.Notification.Action;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.graphics.Bitmap;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
-import android.media.session.MediaController;
-import android.media.session.MediaSession;
-import android.media.session.MediaSessionManager;
 import android.net.wifi.WifiManager;
 import android.os.AsyncTask;
 import android.os.Binder;
@@ -24,7 +17,6 @@ import android.preference.PreferenceManager;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 import android.widget.RemoteViews;
-import android.widget.Toast;
 
 import com.example.ttins.spotifystreamer.app.PlaybackActivityFragment;
 import com.example.ttins.spotifystreamer.app.R;
@@ -36,7 +28,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
-import kaaes.spotify.webapi.android.models.Image;
 
 public class PlaybackService extends Service implements MediaPlayer.OnPreparedListener, MediaPlayer.OnErrorListener, AudioManager.OnAudioFocusChangeListener {
 
@@ -52,12 +43,17 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
     private static final String ACTION_ENABLE_NOTIFY = "com.example.ttins.spotifystreamer.app.services.PlaybackService.ACTION_ENABLE_NOTIFY";
     private static final String ACTION_DISABLE_NOTIFY = "com.example.ttins.spotifystreamer.app.services.PlaybackService.ACTION_DISABLE_NOTIFY";
 
+    //MediaPlayer Status Variables
+    private static final int MP_STATUS_OFF = 0;
+    private static final int MP_STATUS_INIT = 1;
+    private static final int MP_STATUS_PLAYING = 2;
+    private static final int MP_STATUS_PAUSE = 3;
+    private static final int MP_STATUS_COMPLETED = 4;
+
     MediaPlayer mMediaPlayer;
-    Thread mBackgroundThread;
     WifiManager.WifiLock mWifiLock;
     private final IBinder mBinder = new PlaybackBinder();
     private static String mUrl;
-    private String mNewUrl;
     private boolean mIsPaused;
     private int mPausePosition;
     private int mPosition;
@@ -69,13 +65,139 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
     NotificationCompat.Builder mBuilder;
     NotificationManager mNotificationManager;
     RemoteViews mRemoteView;
-    MediaSessionManager mManager;
-    MediaSession mSession;
-    MediaController mController;
     private Boolean mEnableNotify;
 
 
     public PlaybackService() {
+    }
+
+    private Intent notificationActionToIntent(String sAction) {
+        Intent intent = new Intent(getApplicationContext(), PlaybackService.class);
+
+        if (sAction.equals(ACTION_STOP))
+            intent.setAction(ACTION_PLAY);
+        else
+            intent.setAction(ACTION_STOP);
+
+        return intent;
+    }
+
+    private int setPlayStopButtonResource(String sAction) {
+        if (sAction.equals(ACTION_STOP))
+            return android.R.drawable.ic_media_play;
+
+        return android.R.drawable.ic_media_pause;
+    }
+
+    private void makeNotification(boolean isEnabled, RemoteViews remoteView, NotificationCompat.Builder builder, NotificationManager notificationManager, int notificationId, String sAction) {
+
+        if(isEnabled) {
+
+            builder.setContentTitle(mTrackItemList.get(mPosition).getName())
+                    .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                    .setContentText(mTrackItemList.get(mPosition).getAlbumName())
+                    .setSmallIcon(R.drawable.spotify_icon)
+                    .setPriority(NotificationCompat.PRIORITY_HIGH);
+
+            remoteView.setTextViewText(R.id.track_title_notification_textview, mTrackItemList.get(mPosition).getName());
+            remoteView.setTextViewText(R.id.album_title_notification_textview, mTrackItemList.get(mPosition).getAlbumName());
+
+            Intent intentPrev = new Intent(getApplicationContext(), PlaybackService.class);
+            intentPrev.setAction(ACTION_PREV);
+            Intent intentPlayStop = notificationActionToIntent(sAction);
+            Intent intentNext = new Intent(getApplicationContext(), PlaybackService.class);
+            intentNext.setAction(ACTION_NEXT);
+
+            PendingIntent pendingPrevIntent = PendingIntent.getService(getApplicationContext(), 1, intentPrev, 0);
+            PendingIntent pendingPlayStopIntent = PendingIntent.getService(getApplicationContext(), 1, intentPlayStop, 0);
+            PendingIntent pendingNextIntent = PendingIntent.getService(getApplicationContext(), 1, intentNext, 0);
+
+            remoteView.setOnClickPendingIntent(R.id.prev_button_notification, pendingPrevIntent);
+            remoteView.setImageViewResource(R.id.playstop_button_notification, setPlayStopButtonResource(sAction));
+            remoteView.setOnClickPendingIntent(R.id.playstop_button_notification, pendingPlayStopIntent);
+            remoteView.setOnClickPendingIntent(R.id.next_button_notification, pendingNextIntent);
+
+            loadImageInBackground(remoteView, builder, notificationManager, notificationId);
+
+        }
+    }
+
+
+    private void loadImageInBackground(RemoteViews remoteView, NotificationCompat.Builder builder,
+                                       NotificationManager notificationManager, int notificationId) {
+
+        try {
+            new AsyncTask<Object, Void, Void>() {
+                @Override
+                protected Void doInBackground(Object... params) {
+
+                    RemoteViews remoteView = (RemoteViews) params[0];
+                    NotificationCompat.Builder builder = (NotificationCompat.Builder) params[1];
+                    NotificationManager notificationManager = (NotificationManager) params[2];
+                    int notificationId = (int) params[3];
+
+                    builder.setContent(remoteView);
+
+                    try {
+                        remoteView.setImageViewBitmap(R.id.notification_image, Picasso.with(getApplicationContext()).load(mTrackItemList.get(mPosition).getImage()).get());
+                        notificationManager.notify(notificationId, builder.build());
+                    }
+                    catch (IOException e) {
+                        Log.d(LOG_TAG, "Failed to load image into notification");
+                    }
+
+                    return null;
+                }
+
+            }.execute(remoteView, builder, notificationManager, notificationId).get();
+
+        }
+        catch (InterruptedException e) {
+            Log.d(LOG_TAG, "Interrupted Exception on image notification load");
+        } catch (ExecutionException e) {
+            Log.d(LOG_TAG, "Execution Exception on image notification load");
+        }
+    }
+
+    private void setMediaPlayerStatus(int status) {
+
+        switch (status) {
+            case MP_STATUS_COMPLETED:
+                mIsPaused=false;
+                mIsStarted=false;
+                mIsCompleted=true;
+                Log.d(LOG_TAG, "MediaPlayer Status COMPLETED");
+                break;
+            case MP_STATUS_PLAYING:
+                mIsPaused=false;
+                mIsStarted=true;
+                mIsCompleted=false;
+                Log.d(LOG_TAG, "MediaPlayer Status PLAY");
+                break;
+            case MP_STATUS_PAUSE:
+                mIsPaused=true;
+                mIsStarted=false;
+                mIsCompleted=false;
+                Log.d(LOG_TAG, "MediaPlayer Status PAUSE");
+                break;
+            case MP_STATUS_INIT:
+                mIsPaused=false;
+                mIsStarted=false;
+                mIsCompleted=false;
+                Log.d(LOG_TAG, "MediaPlayer Status INIT");
+                break;
+            case MP_STATUS_OFF:
+                mIsPaused=false;
+                mIsStarted=false;
+                mIsCompleted=false;
+                Log.d(LOG_TAG, "MediaPlayer Status OFF");
+                break;
+            default:{
+                //nothing at the moment
+                Log.d(LOG_TAG, "MediaPlayer Status DEFAULT");
+                break;
+            }
+        }
     }
 
     @Override
@@ -91,84 +213,16 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
         mMediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
             @Override
             public void onCompletion(MediaPlayer mp) {
-                mIsCompleted = true;
-                mIsStarted = false;
-                mIsPaused = false;
+                setMediaPlayerStatus(MP_STATUS_COMPLETED);
                 mCallback.onMediaCompleted();
                 Log.d(LOG_TAG, "Media completed");
 
-                if(mEnableNotify) {
-                    if (mBuilder == null) {
-                        mRemoteView = new RemoteViews(getPackageName(), R.layout.notification_layout);
-                        mBuilder = new NotificationCompat.Builder(getApplicationContext());
-                        mNotificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-                    }
-
-                    mBuilder.setContentTitle(mTrackItemList.get(mPosition).getName())
-                            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-                            .setContentText(mTrackItemList.get(mPosition).getAlbumName())
-                            .setSmallIcon(R.drawable.spotify_icon)
-                            .setPriority(NotificationCompat.PRIORITY_HIGH);
-
-                    mRemoteView.setTextViewText(R.id.track_title_notification_textview, mTrackItemList.get(mPosition).getName());
-                    mRemoteView.setTextViewText(R.id.album_title_notification_textview, mTrackItemList.get(mPosition).getAlbumName());
-
-                    Intent intentPrev = new Intent(getApplicationContext(), PlaybackService.class);
-                    intentPrev.setAction(ACTION_PREV);
-                    Intent intentPlayStop = new Intent(getApplicationContext(), PlaybackService.class);
-                    intentPlayStop.setAction(ACTION_PLAY);
-                    Intent intentNext = new Intent(getApplicationContext(), PlaybackService.class);
-                    intentNext.setAction(ACTION_NEXT);
-
-                    PendingIntent pendingPrevIntent = PendingIntent.getService(getApplicationContext(), 1, intentPrev, 0);
-                    PendingIntent pendingPlayStopIntent = PendingIntent.getService(getApplicationContext(), 1, intentPlayStop, 0);
-                    PendingIntent pendingNextIntent = PendingIntent.getService(getApplicationContext(), 1, intentNext, 0);
-
-                    mRemoteView.setOnClickPendingIntent(R.id.prev_button_notification, pendingPrevIntent);
-                    mRemoteView.setImageViewResource(R.id.playstop_button_notification, android.R.drawable.ic_media_play);
-                    mRemoteView.setOnClickPendingIntent(R.id.playstop_button_notification, pendingPlayStopIntent);
-                    mRemoteView.setOnClickPendingIntent(R.id.next_button_notification, pendingNextIntent);
-                    try {
-                        Void imageBmp = new AsyncTask<Void, Void, Void>() {
-                            @Override
-                            protected Void doInBackground(Void... params) {
-                                mBuilder.setContent(mRemoteView);
-
-
-
-                                try {
-                                    mRemoteView.setImageViewBitmap(R.id.notification_image, Picasso.with(getApplicationContext()).load(mTrackItemList.get(mPosition).getImage()).get());
-                                    mNotificationManager.notify(mNotificationId, mBuilder.build());
-
-
-
-                                }
-                                catch (IOException e) {
-                                    Log.d(LOG_TAG, "Failed to load image into notification");
-                                }
-
-                                return null;
-                            }
-
-                        }.execute().get();
-                    }
-                    catch (InterruptedException e) {
-                        Log.d(LOG_TAG, "Interrupted Exception on image notification load");
-                    } catch (ExecutionException e) {
-                        Log.d(LOG_TAG, "Execution Exception on image notification load");
-                    }
-                }
-
+                makeNotification(mEnableNotify, mRemoteView, mBuilder, mNotificationManager, mNotificationId, ACTION_PLAY);
 
             }
         });
 
-        if(mEnableNotify) {
-            mRemoteView = new RemoteViews(getPackageName(), R.layout.notification_layout);
-            mBuilder = new NotificationCompat.Builder(this);
-            mNotificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-
-        }
+        initNotification();
 
         mMediaPlayer.setWakeMode(getApplicationContext(), PowerManager.PARTIAL_WAKE_LOCK);
         mMediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
@@ -182,6 +236,15 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
 
     }
 
+    private void initNotification() {
+        if (mRemoteView == null)
+            mRemoteView = new RemoteViews(getPackageName(), R.layout.notification_layout);
+        if(mBuilder == null)
+            mBuilder = new NotificationCompat.Builder(this);
+        if(mNotificationManager == null)
+            mNotificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+    }
+
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
@@ -193,9 +256,7 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
 
         if (intent.getAction().equals(ACTION_ENABLE_NOTIFY)) {
             mEnableNotify=true;
-            mRemoteView = new RemoteViews(getPackageName(), R.layout.notification_layout);
-            mBuilder = new NotificationCompat.Builder(this);
-            mNotificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+            initNotification();
 
         } else if (intent.getAction().equals(ACTION_DISABLE_NOTIFY)) {
             mEnableNotify=false;
@@ -216,9 +277,7 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
                 mUrl = mTrackItemList.get(mPosition).getTrackPreview_url();
                 mMediaPlayer.stop();
                 mMediaPlayer.reset();
-                mIsStarted=false;
-                mIsPaused=false;
-                mIsCompleted=false;
+                setMediaPlayerStatus(MP_STATUS_INIT);
                 try {
                     mMediaPlayer.setDataSource(mUrl);
                 }
@@ -232,9 +291,8 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
             mPosition = (mPosition > (mTrackItemList.size() - 1)) ? 0 : mPosition;
             mUrl = mTrackItemList.get(mPosition).getTrackPreview_url();
             mMediaPlayer.stop();
-            mIsStarted = false;
             mMediaPlayer.reset();
-            mIsCompleted=false;
+            setMediaPlayerStatus(MP_STATUS_INIT);
             try {
                 mMediaPlayer.setDataSource(mUrl);
                 mMediaPlayer.prepareAsync();
@@ -243,71 +301,17 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
                 Log.d(LOG_TAG, "No files found on trying to streaming audio clip");
             }
 
-            if(mEnableNotify) {
-                mBuilder.setContentTitle(mTrackItemList.get(mPosition).getName())
-                        .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-                        .setContentText(mTrackItemList.get(mPosition).getAlbumName())
-                        .setSmallIcon(R.drawable.spotify_icon)
-                        .setPriority(NotificationCompat.PRIORITY_HIGH);
-
-                mRemoteView.setTextViewText(R.id.track_title_notification_textview, mTrackItemList.get(mPosition).getName());
-                mRemoteView.setTextViewText(R.id.album_title_notification_textview, mTrackItemList.get(mPosition).getAlbumName());
-
-                Intent intentPrev = new Intent(getApplicationContext(), PlaybackService.class);
-                intentPrev.setAction(ACTION_PREV);
-                Intent intentPlayStop = new Intent(getApplicationContext(), PlaybackService.class);
-                intentPlayStop.setAction(ACTION_STOP);
-                Intent intentNext = new Intent(getApplicationContext(), PlaybackService.class);
-                intentNext.setAction(ACTION_NEXT);
-
-                PendingIntent pendingPrevIntent = PendingIntent.getService(getApplicationContext(), 1, intentPrev, 0);
-                PendingIntent pendingPlayStopIntent = PendingIntent.getService(getApplicationContext(), 1, intentPlayStop, 0);
-                PendingIntent pendingNextIntent = PendingIntent.getService(getApplicationContext(), 1, intentNext, 0);
-
-                mRemoteView.setOnClickPendingIntent(R.id.prev_button_notification, pendingPrevIntent);
-                mRemoteView.setImageViewResource(R.id.playstop_button_notification, android.R.drawable.ic_media_pause);
-                mRemoteView.setOnClickPendingIntent(R.id.playstop_button_notification, pendingPlayStopIntent);
-                mRemoteView.setOnClickPendingIntent(R.id.next_button_notification, pendingNextIntent);
-                try {
-                    Void imageBmp = new AsyncTask<Void, Void, Void>() {
-                        @Override
-                        protected Void doInBackground(Void... params) {
-                            mBuilder.setContent(mRemoteView);
-
-
-
-                            try {
-                                mRemoteView.setImageViewBitmap(R.id.notification_image, Picasso.with(getApplicationContext()).load(mTrackItemList.get(mPosition).getImage()).get());
-                                mNotificationManager.notify(mNotificationId, mBuilder.build());
-
-
-
-                            }
-                            catch (IOException e) {
-                                Log.d(LOG_TAG, "Failed to load image into notification");
-                            }
-
-                            return null;
-                        }
-
-                    }.execute().get();
-                }
-                catch (InterruptedException e) {
-                    Log.d(LOG_TAG, "Interrupted Exception on image notification load");
-                } catch (ExecutionException e) {
-                    Log.d(LOG_TAG, "Execution Exception on image notification load");
-                }
-
-            }
+            //TODO
+            makeNotification(mEnableNotify, mRemoteView, mBuilder, mNotificationManager, mNotificationId, ACTION_NEXT);
 
         } else if (intent.getAction().equals(ACTION_PREV)) {
             mPosition = mPosition - 1;
             mPosition = (mPosition < 0) ? (mTrackItemList.size()-1) : mPosition;
             mUrl = mTrackItemList.get(mPosition).getTrackPreview_url();
             mMediaPlayer.stop();
-            mIsStarted = false;
             mMediaPlayer.reset();
-            mIsCompleted=false;
+            setMediaPlayerStatus(MP_STATUS_INIT);
+
             try {
                 mMediaPlayer.setDataSource(mUrl);
                 mMediaPlayer.prepareAsync();
@@ -316,137 +320,24 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
                 Log.d(LOG_TAG, "No files found on trying to streaming audio clip");
             }
 
-            if(mEnableNotify) {
-                mBuilder.setContentTitle(mTrackItemList.get(mPosition).getName())
-                        .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-                        .setContentText(mTrackItemList.get(mPosition).getAlbumName())
-                        .setSmallIcon(R.drawable.spotify_icon)
-                        .setPriority(NotificationCompat.PRIORITY_HIGH);
-
-                mRemoteView.setTextViewText(R.id.track_title_notification_textview, mTrackItemList.get(mPosition).getName());
-                mRemoteView.setTextViewText(R.id.album_title_notification_textview, mTrackItemList.get(mPosition).getAlbumName());
-
-                Intent intentPrev = new Intent(getApplicationContext(), PlaybackService.class);
-                intentPrev.setAction(ACTION_PREV);
-                Intent intentPlayStop = new Intent(getApplicationContext(), PlaybackService.class);
-                intentPlayStop.setAction(ACTION_STOP);
-                Intent intentNext = new Intent(getApplicationContext(), PlaybackService.class);
-                intentNext.setAction(ACTION_NEXT);
-
-                PendingIntent pendingPrevIntent = PendingIntent.getService(getApplicationContext(), 1, intentPrev, 0);
-                PendingIntent pendingPlayStopIntent = PendingIntent.getService(getApplicationContext(), 1, intentPlayStop, 0);
-                PendingIntent pendingNextIntent = PendingIntent.getService(getApplicationContext(), 1, intentNext, 0);
-
-                mRemoteView.setOnClickPendingIntent(R.id.prev_button_notification, pendingPrevIntent);
-                mRemoteView.setImageViewResource(R.id.playstop_button_notification, android.R.drawable.ic_media_pause);
-                mRemoteView.setOnClickPendingIntent(R.id.playstop_button_notification, pendingPlayStopIntent);
-                mRemoteView.setOnClickPendingIntent(R.id.next_button_notification, pendingNextIntent);
-
-
-                try {
-                    Void imageBmp = new AsyncTask<Void, Void, Void>() {
-                        @Override
-                        protected Void doInBackground(Void... params) {
-                            mBuilder.setContent(mRemoteView);
-
-
-
-                            try {
-                                mRemoteView.setImageViewBitmap(R.id.notification_image, Picasso.with(getApplicationContext()).load(mTrackItemList.get(mPosition).getImage()).get());
-                                mNotificationManager.notify(mNotificationId, mBuilder.build());
-
-
-
-                            }
-                            catch (IOException e) {
-                                Log.d(LOG_TAG, "Failed to load image into notification");
-                            }
-
-                            return null;
-                        }
-
-                    }.execute().get();
-                }
-                catch (InterruptedException e) {
-                    Log.d(LOG_TAG, "Interrupted Exception on image notification load");
-                } catch (ExecutionException e) {
-                    Log.d(LOG_TAG, "Execution Exception on image notification load");
-                }
-            }
+            //TODO
+            makeNotification(mEnableNotify, mRemoteView, mBuilder, mNotificationManager, mNotificationId, ACTION_PREV);
 
         } else if (intent.getAction().equals(ACTION_PLAY)) {
-                if (mIsPaused)
-                    playMusicInBackground(mMediaPlayer);
-                else if (mIsCompleted) {
-                    mMediaPlayer.seekTo(0);
-                    mMediaPlayer.start();
-                    mIsCompleted=false;
-                    mIsStarted = true;
-                    mIsPaused = false;
-                } else if (mIsStarted) {
-                    //Do nothing
-                }
-                else
-                    mMediaPlayer.prepareAsync();
+            if (mIsPaused)
+                playMusicInBackground(mMediaPlayer);
+            else if (mIsCompleted) {
+                mMediaPlayer.seekTo(0);
+                mMediaPlayer.start();
+                setMediaPlayerStatus(MP_STATUS_PLAYING);
+            } else if (mIsStarted) {
+                //Do nothing
+            }
+            else
+                mMediaPlayer.prepareAsync();
 
-                if(mEnableNotify) {
-                    mBuilder.setContentTitle(mTrackItemList.get(mPosition).getName())
-                            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-                            .setContentText(mTrackItemList.get(mPosition).getAlbumName())
-                            .setSmallIcon(R.drawable.spotify_icon)
-                            .setPriority(NotificationCompat.PRIORITY_HIGH);
-
-                    mRemoteView.setTextViewText(R.id.track_title_notification_textview, mTrackItemList.get(mPosition).getName());
-                    mRemoteView.setTextViewText(R.id.album_title_notification_textview, mTrackItemList.get(mPosition).getAlbumName());
-
-                    Intent intentPrev = new Intent(getApplicationContext(), PlaybackService.class);
-                    intentPrev.setAction(ACTION_PREV);
-                    Intent intentPlayStop = new Intent(getApplicationContext(), PlaybackService.class);
-                    intentPlayStop.setAction(ACTION_STOP);
-                    Intent intentNext = new Intent(getApplicationContext(), PlaybackService.class);
-                    intentNext.setAction(ACTION_NEXT);
-
-                    PendingIntent pendingPrevIntent = PendingIntent.getService(getApplicationContext(), 1, intentPrev, 0);
-                    PendingIntent pendingPlayStopIntent = PendingIntent.getService(getApplicationContext(), 1, intentPlayStop, 0);
-                    PendingIntent pendingNextIntent = PendingIntent.getService(getApplicationContext(), 1, intentNext, 0);
-
-                    mRemoteView.setOnClickPendingIntent(R.id.prev_button_notification, pendingPrevIntent);
-                    mRemoteView.setImageViewResource(R.id.playstop_button_notification, android.R.drawable.ic_media_pause);
-                    mRemoteView.setOnClickPendingIntent(R.id.playstop_button_notification, pendingPlayStopIntent);
-                    mRemoteView.setOnClickPendingIntent(R.id.next_button_notification, pendingNextIntent);
-
-
-                    try {
-                        Void imageBmp = new AsyncTask<Void, Void, Void>() {
-                            @Override
-                            protected Void doInBackground(Void... params) {
-                                mBuilder.setContent(mRemoteView);
-
-
-
-                                try {
-                                    mRemoteView.setImageViewBitmap(R.id.notification_image, Picasso.with(getApplicationContext()).load(mTrackItemList.get(mPosition).getImage()).get());
-                                    mNotificationManager.notify(mNotificationId, mBuilder.build());
-
-
-
-                                }
-                                catch (IOException e) {
-                                    Log.d(LOG_TAG, "Failed to load image into notification");
-                                }
-
-                                return null;
-                            }
-
-                        }.execute().get();
-                    }
-                    catch (InterruptedException e) {
-                        Log.d(LOG_TAG, "Interrupted Exception on image notification load");
-                    } catch (ExecutionException e) {
-                        Log.d(LOG_TAG, "Execution Exception on image notification load");
-                    }
-
-                }
+            //TODO
+            makeNotification(mEnableNotify, mRemoteView, mBuilder, mNotificationManager, mNotificationId, ACTION_PLAY);
 
 
         } else if (intent.getAction().equals(ACTION_PLAY_RESUME)) {
@@ -461,67 +352,11 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
             if (null != mMediaPlayer && mMediaPlayer.isPlaying() && !mIsPaused) {
                 Log.d(LOG_TAG, "DEBUG :: ACTION_STOP received");
                 mMediaPlayer.pause();
-                mIsStarted = false;
                 mPausePosition = mMediaPlayer.getCurrentPosition();
-                mIsPaused = true;
+                setMediaPlayerStatus(MP_STATUS_PAUSE);
 
-                if(mEnableNotify) {
-                    mBuilder.setContentTitle(mTrackItemList.get(mPosition).getName())
-                            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-                            .setContentText(mTrackItemList.get(mPosition).getAlbumName())
-                            .setSmallIcon(R.drawable.spotify_icon)
-                            .setPriority(NotificationCompat.PRIORITY_HIGH);
-
-                    mRemoteView.setTextViewText(R.id.track_title_notification_textview, mTrackItemList.get(mPosition).getName());
-                    mRemoteView.setTextViewText(R.id.album_title_notification_textview, mTrackItemList.get(mPosition).getAlbumName());
-
-                    Intent intentPrev = new Intent(getApplicationContext(), PlaybackService.class);
-                    intentPrev.setAction(ACTION_PREV);
-                    Intent intentPlayStop = new Intent(getApplicationContext(), PlaybackService.class);
-                    intentPlayStop.setAction(ACTION_PLAY);
-                    Intent intentNext = new Intent(getApplicationContext(), PlaybackService.class);
-                    intentNext.setAction(ACTION_NEXT);
-
-                    PendingIntent pendingPrevIntent = PendingIntent.getService(getApplicationContext(), 1, intentPrev, 0);
-                    PendingIntent pendingPlayStopIntent = PendingIntent.getService(getApplicationContext(), 1, intentPlayStop, 0);
-                    PendingIntent pendingNextIntent = PendingIntent.getService(getApplicationContext(), 1, intentNext, 0);
-
-                    mRemoteView.setOnClickPendingIntent(R.id.prev_button_notification, pendingPrevIntent);
-                    mRemoteView.setImageViewResource(R.id.playstop_button_notification, android.R.drawable.ic_media_play);
-                    mRemoteView.setOnClickPendingIntent(R.id.playstop_button_notification, pendingPlayStopIntent);
-                    mRemoteView.setOnClickPendingIntent(R.id.next_button_notification, pendingNextIntent);
-
-
-                    try {
-                        Void imageBmp = new AsyncTask<Void, Void, Void>() {
-                            @Override
-                            protected Void doInBackground(Void... params) {
-                                mBuilder.setContent(mRemoteView);
-
-
-
-                                try {
-                                    mRemoteView.setImageViewBitmap(R.id.notification_image, Picasso.with(getApplicationContext()).load(mTrackItemList.get(mPosition).getImage()).get());
-                                    mNotificationManager.notify(mNotificationId, mBuilder.build());
-
-
-
-                                }
-                                catch (IOException e) {
-                                    Log.d(LOG_TAG, "Failed to load image into notification");
-                                }
-
-                                return null;
-                            }
-
-                        }.execute().get();
-                    }
-                    catch (InterruptedException e) {
-                        Log.d(LOG_TAG, "Interrupted Exception on image notification load");
-                    } catch (ExecutionException e) {
-                        Log.d(LOG_TAG, "Execution Exception on image notification load");
-                    }
-                }
+                //TODO
+                makeNotification(mEnableNotify, mRemoteView, mBuilder, mNotificationManager, mNotificationId, ACTION_STOP);
 
             }
 
@@ -542,19 +377,11 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
 
 
     public void playMusicInBackground(MediaPlayer mediaPlayer) {
-        mIsPaused = false;
         mediaPlayer.start();
+        setMediaPlayerStatus(MP_STATUS_PLAYING);
         mCallback.onMediaPlaying();
 
         mCallback.onTrackPlaying(mTrackItemList.get(mPosition).getAlbumName(), mTrackItemList.get(mPosition).getAlbumImages().get(0), mTrackItemList.get(mPosition).getName(), mTrackItemList.get(mPosition).getArtists(), mMediaPlayer.getDuration());
-        mIsStarted = true;
-        /*mBackgroundThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                Log.d(LOG_TAG, "Starting Media Playback");
-                mMediaPlayer.start();
-            }
-        });*/
     }
 
     public int getDuration() {
@@ -591,6 +418,9 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
     }
 
     public int getPlaybackPosition() {
+        if (mIsCompleted)
+            return mMediaPlayer.getDuration();
+
         return mMediaPlayer.getCurrentPosition();
     }
 
@@ -652,8 +482,7 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
         super.onDestroy();
 
         mMediaPlayer.stop();
-        mIsStarted = false;
-        mIsPaused = false;
+        setMediaPlayerStatus(MP_STATUS_OFF);
         mMediaPlayer.release();
         mMediaPlayer=null;
         mWifiLock.release();
@@ -717,8 +546,5 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
         void onMediaPlaying();
         void onTrackPlaying(String albumName, String albumImageUrl, String trackName, List<String> artistNames, int duration);
     }
-
-
-
 
 }

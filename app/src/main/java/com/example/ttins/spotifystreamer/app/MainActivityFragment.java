@@ -2,7 +2,6 @@ package com.example.ttins.spotifystreamer.app;
 
 import android.app.Activity;
 import android.content.Context;
-import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.SystemClock;
 import android.preference.PreferenceManager;
@@ -11,7 +10,6 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
-import android.view.Menu;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
@@ -63,7 +61,6 @@ public class MainActivityFragment extends Fragment {
 
 
     /**** Methods ****/
-
     public MainActivityFragment() {
     }
 
@@ -80,11 +77,8 @@ public class MainActivityFragment extends Fragment {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
-
         super.onPause();
-
         setRetainInstance(true);
-
         PreferenceManager.setDefaultValues(getActivity(), R.xml.preference_activity, false);
     }
 
@@ -94,10 +88,8 @@ public class MainActivityFragment extends Fragment {
 
         //Calling Super method for backward compatibility
         super.onCreateView(inflater, container, savedInstanceState);
-
         //Loading and declaring UI fragment components
         View viewRoot = inflater.inflate(R.layout.fragment_main, container, false);
-
         //Views references
         Button buttonClearText = (Button) viewRoot.findViewById(R.id.button_clear_search);
         mEditText = (EditText) viewRoot.findViewById(R.id.edittext_search_artist);

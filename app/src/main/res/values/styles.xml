@@ -97,6 +97,11 @@
 
     </style>
 
+    <style name="PreferencesTheme" parent="@android:style/Theme.Light">
+        <item name="android:textColorSecondary">@color/colorSecondaryText</item>
+        <item name="android:textColorPrimary">@color/colorPrimaryText</item>
+    </style>
+
 
 </resources>
 

@@ -6,13 +6,14 @@
         android:title="Language"
         android:defaultValue="@string/pref_list_lang_default_value"
         android:entries="@array/pref_lang_entries"
-        android:entryValues="@array/pref_lang_entryValues">
+        android:entryValues="@array/pref_lang_entryValues"
+        android:textColor="@color/colorPrimaryText">
 
     </ListPreference>
 
     <CheckBoxPreference
         android:key="@string/pref_checkbox_notification_key"
         android:title="Notifications"
-        android:defaultValue="@string/pref_checkbox_notification_defaul_value"/>
+        android:defaultValue="@string/pref_checkbox_notification_defaul_value" />
 
 </PreferenceScreen>

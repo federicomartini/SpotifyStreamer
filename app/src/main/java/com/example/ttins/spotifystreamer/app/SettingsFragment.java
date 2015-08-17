@@ -54,6 +54,7 @@ public class SettingsFragment extends PreferenceFragment
 
         }
 
+
         @Override
         public void onServiceDisconnected(ComponentName name) {
             mBound=false;
@@ -69,6 +70,7 @@ public class SettingsFragment extends PreferenceFragment
 
         bindPreferenceSummaryToValue(findPreference(getString(R.string.pref_list_lang_key)));
         bindPreferenceSummaryToValue(findPreference(getString(R.string.pref_checkbox_notification_key)));
+
     }
 
 

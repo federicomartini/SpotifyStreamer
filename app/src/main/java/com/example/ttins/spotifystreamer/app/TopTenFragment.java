@@ -58,11 +58,6 @@ public class TopTenFragment extends Fragment {
     private final static String LOG_TAG = "TopTenActivity_Fragment";
     private OnTopTenFragmentInteractionListener mCallback;
 
-
-    // TODO: Rename and change types of parameters
-    private String mParam1;
-    private String mParam2;
-
     TopTenListAdapter mTopTenArrayAdapter;
     List<TrackItemList> mTracks = new ArrayList<>();
     ImageView mImageViewTop;
@@ -71,23 +66,6 @@ public class TopTenFragment extends Fragment {
     String mArtistName;
     String mArtistImage;
 
-    /**
-     * Use this factory method to create a new instance of
-     * this fragment using the provided parameters.
-     *
-     * @param param1 Parameter 1.
-     * @param param2 Parameter 2.
-     * @return A new instance of fragment TopTenFragment.
-     */
-    // TODO: Rename and change types and number of parameters
-    public static TopTenFragment newInstance(String param1, String param2) {
-        TopTenFragment fragment = new TopTenFragment();
-        Bundle args = new Bundle();
-        args.putString(ARG_PARAM1, param1);
-        args.putString(ARG_PARAM2, param2);
-        fragment.setArguments(args);
-        return fragment;
-    }
 
     public TopTenFragment() {
         // Required empty public constructor
@@ -99,31 +77,26 @@ public class TopTenFragment extends Fragment {
         setRetainInstance(true);
         PreferenceManager.setDefaultValues(getActivity(), R.xml.preference_activity, false);
 
-        if (getArguments() != null) {
-            mParam1 = getArguments().getString(ARG_PARAM1);
-            mParam2 = getArguments().getString(ARG_PARAM2);
-        }
 
         if (null == savedInstanceState) {
-            mArtistName = getArguments().getString(ARG_ARTIST_NAME);
-            mArtistImage = getArguments().getString(ARG_ARTIST_IMAGE);
-            mTracks = getArguments().getParcelableArrayList(ARG_TOP_TEN_LIST);
+            if (getArguments() != null) {
+                mArtistName = getArguments().getString(ARG_ARTIST_NAME);
+                mArtistImage = getArguments().getString(ARG_ARTIST_IMAGE);
+                mTracks = getArguments().getParcelableArrayList(ARG_TOP_TEN_LIST);
+            }
         } else {
             mTracks = savedInstanceState.getParcelableArrayList(LIST_KEY);
         }
 
-
-        if (mArtistImage == null || mArtistName == null || mTracks == null)
-            Log.d(LOG_TAG, "Some arguments are null");
-
     }
+
 
     @Override
     public void onSaveInstanceState(@NonNull Bundle saveInstanceState) {
         super.onSaveInstanceState(saveInstanceState);
-
         saveInstanceState.putParcelableArrayList(LIST_KEY, (ArrayList<TrackItemList>) mTracks);
     }
+
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -183,8 +156,6 @@ public class TopTenFragment extends Fragment {
                 } else {
                     Log.d(LOG_TAG, "track list null on callback");
                 }
-
-
             }
         });
     }

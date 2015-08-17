@@ -1,19 +1,14 @@
 package com.example.ttins.spotifystreamer.app;
 
-import android.app.Activity;
 import android.app.Fragment;
 import android.app.FragmentManager;
-import android.app.FragmentTransaction;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
-import android.net.Uri;
-import android.os.Binder;
 import android.os.IBinder;
 import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
-import android.support.v4.view.MenuItemCompat;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.support.v7.widget.Toolbar;
@@ -22,13 +17,9 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.ShareActionProvider;
 import android.widget.Toast;
-
 import com.example.ttins.spotifystreamer.app.Services.PlaybackService;
 import com.example.ttins.spotifystreamer.app.utils.MyArtist;
 import com.example.ttins.spotifystreamer.app.utils.TrackItemList;
-import com.squareup.picasso.Picasso;
-
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -36,6 +27,27 @@ import java.util.List;
 public class MainActivity extends ActionBarActivity implements MainActivityFragment.OnArtistSelectedListener, TopTenFragment.OnTopTenFragmentInteractionListener, PlaybackActivityFragment.OnFragmentClickListener {
 
     private static final String LOG_TAG = "MainActivity";
+    public static final String ACTION_NOW_PLAY = "com.example.ttins.spotifystreamer.MainActivity.INTENT_NOW_PLAYING_TRACK";
+    public static final String FRAG_ARG_ARTIST_NAME = "ARG_ARTIST_NAME";
+    public static final String FRAG_ARG_ARTIST_IMAGE = "ARG_ARTIST_IMAGE";
+    public static final String FRAG_ARG_TOP_TEN_LIST = "ARG_TOP_TEN_LIST";
+    public static final String FRAG_ARG_TRACK = "ARG_TRACK";
+    public static final String FRAG_ARG_TRACK_POSITION = "ARG_TRACK_POSITION";
+    public static final String FRAG_ARG_NOW_PLAYING = "ARG_NOW_PLAYING";
+
+    public static final String INTENT_PREVIEW_URL = "INTENT_PREVIEW_URL";
+    public static final String INTENT_TRACK_POSITION = "INTENT_TRACK_POSITION";
+    public static final String INTENT_TOP_TEN_LIST = "INTENT_TOP_TEN_LIST";
+    public static final String BUNDLE_TRACK = "BUNDLE_TRACK";
+    public static final String INTENT_TRACK_BUNDLE = "INTENT_TRACK_BUNDLE";
+    public static final String INTENT_ARTIST_NAME = "INTENT_ARTIST_NAME";
+    public static final String INTENT_ARTIST_IMAGE = "INTENT_ARTIST_IMAGE";
+    public static final String TOP_TEN_LIST = "TOP_TEN_LIST";
+
+    public static final String SAVED_TRACK_LIST = "TRACK_LIST";
+    public static final String SAVED_PREVIEW_URL = "PREVIEW_URL";
+
+
     private boolean mTwoPane;
     private List<TrackItemList> mTracks = new ArrayList<TrackItemList>();
     private String mTrackPreview_Url;
@@ -43,9 +55,8 @@ public class MainActivity extends ActionBarActivity implements MainActivityFragm
     private PlaybackService mPlaybackService;
     private boolean mBound;
     MenuItem mPlayActionButton;
-    private ShareActionProvider mShareActionProvider;
 
-    public static final String ACTION_NOW_PLAY = "com.example.ttins.spotifystreamer.MainActivity.INTENT_NOW_PLAYING_TRACK";
+
     private ServiceConnection mConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
@@ -56,12 +67,7 @@ public class MainActivity extends ActionBarActivity implements MainActivityFragm
             Log.d(LOG_TAG, "Bound to Playback service");
 
             if (mPlaybackService.getPreviewUrl() != null && mPlaybackService.getPreviewUrl().length() != 0) {
-                Intent sendIntent = new Intent();
-
-                sendIntent.setAction(Intent.ACTION_SEND);
-                sendIntent.putExtra(Intent.EXTRA_TEXT, mPlaybackService.getPreviewUrl());
-                sendIntent.setType("text/plain");
-                startActivity(Intent.createChooser(sendIntent, "SendTo"));
+                sendShareIntent(mPlaybackService.getPreviewUrl());
             } else {
                 Toast.makeText(getApplicationContext(), "No Url found", Toast.LENGTH_SHORT).show();
             }
@@ -75,19 +81,28 @@ public class MainActivity extends ActionBarActivity implements MainActivityFragm
         }
     };
 
+    void sendShareIntent(String previewUrl) {
+        Intent sendIntent = new Intent();
+
+        sendIntent.setAction(Intent.ACTION_SEND);
+        sendIntent.putExtra(Intent.EXTRA_TEXT, previewUrl);
+        sendIntent.setType("text/plain");
+        startActivity(Intent.createChooser(sendIntent, getResources().getString(R.string.share_intent_menu_text)));
+
+    }
+
     @Override
     public void onArtistSelected(MyArtist artist, ArrayList<TrackItemList> tracks) {
-        //TODO: Manage the artist selection behavior
+        //Tablet version
         if (mTwoPane){
             mTopTenFragment = new TopTenFragment();
             Bundle argsBundle = new Bundle();
             mTracks = tracks;
-            argsBundle.putString("ARG_ARTIST_NAME", artist.name);
-            argsBundle.putString("ARG_ARTIST_IMAGE", artist.image);
-            argsBundle.putParcelableArrayList("ARG_TOP_TEN_LIST", tracks);
+            argsBundle.putString(FRAG_ARG_ARTIST_NAME, artist.name);
+            argsBundle.putString(FRAG_ARG_ARTIST_IMAGE, artist.image);
+            argsBundle.putParcelableArrayList(FRAG_ARG_TOP_TEN_LIST, tracks);
 
             mTopTenFragment.setArguments(argsBundle);
-
             getFragmentManager().beginTransaction().replace(R.id.topten_container, mTopTenFragment).commit();
 
         } else {
@@ -103,9 +118,9 @@ public class MainActivity extends ActionBarActivity implements MainActivityFragm
 
         /* Starting Playback Service */
         Intent playbackServiceIntent = new Intent(PlaybackService.ACTION_INIT);
-        playbackServiceIntent.putExtra("INTENT_PREVIEW_URL", trackItemList.getTrackPreview_url());
-        playbackServiceIntent.putExtra("INTENT_TRACK_POSITION", position);
-        playbackServiceIntent.putParcelableArrayListExtra("INTENT_TOP_TEN_LIST", (ArrayList<TrackItemList>) mTracks);
+        playbackServiceIntent.putExtra(INTENT_PREVIEW_URL, trackItemList.getTrackPreview_url());
+        playbackServiceIntent.putExtra(INTENT_TRACK_POSITION, position);
+        playbackServiceIntent.putParcelableArrayListExtra(INTENT_TOP_TEN_LIST, (ArrayList<TrackItemList>) mTracks);
         playbackServiceIntent.setClass(this, PlaybackService.class);
         startService(playbackServiceIntent);
 
@@ -118,27 +133,19 @@ public class MainActivity extends ActionBarActivity implements MainActivityFragm
             FragmentManager fragmentManager = getFragmentManager();
             Bundle bundleFragment = new Bundle();
 
-            bundleFragment.putParcelable("ARG_TRACK", trackItemList);
-            bundleFragment.putParcelableArrayList("ARG_TOP_TEN_LIST", (ArrayList<TrackItemList>) mTracks);
-            bundleFragment.putInt("ARG_TRACK_POSITION", position);
+            bundleFragment.putParcelable(FRAG_ARG_TRACK, trackItemList);
+            bundleFragment.putParcelableArrayList(FRAG_ARG_TOP_TEN_LIST, (ArrayList<TrackItemList>) mTracks);
+            bundleFragment.putInt(FRAG_ARG_TRACK_POSITION, position);
 
             playbackActivityFragment.setArguments(bundleFragment);
             playbackActivityFragment.show(fragmentManager, "Play Now");
 
-            /*FragmentManager fragmentManager = getFragmentManager();
-            FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
-            PlaybackActivityFragment playbackFragment = new PlaybackActivityFragment();
-
-            fragmentTransaction.addToBackStack(null);
-
-            fragmentTransaction.add(R.id.playback_container, playbackFragment).commit();*/
-
         } else {
             /* Starting Playback UI */
-            bundle.putParcelable("BUNDLE_TRACK", trackItemList);
-            bundle.putInt("INTENT_TRACK_POSITION", position);
-            bundle.putParcelableArrayList("INTENT_TOP_TEN_LIST", (ArrayList<TrackItemList>) mTracks);
-            intent.putExtra("INTENT_TRACK_BUNDLE", bundle);
+            bundle.putParcelable(BUNDLE_TRACK, trackItemList);
+            bundle.putInt(INTENT_TRACK_POSITION, position);
+            bundle.putParcelableArrayList(INTENT_TOP_TEN_LIST, (ArrayList<TrackItemList>) mTracks);
+            intent.putExtra(INTENT_TRACK_BUNDLE, bundle);
             startActivity(intent);
         }
 
@@ -154,29 +161,24 @@ public class MainActivity extends ActionBarActivity implements MainActivityFragm
         }
 
         setContentView(R.layout.activity_main);
-
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setToolbar(toolbar);
-
         PreferenceManager.setDefaultValues(getApplicationContext(), R.xml.preference_activity, false);
 
         if (findViewById(R.id.topten_container) != null) {
             mTwoPane = true;
         }
-
     }
 
     @Override
     public void onStart() {
         super.onStart();
-
         if (null == mPlaybackService && !mTwoPane) {
             Intent intent = new Intent(this, PlaybackService.class);
             if (!bindService(intent, mConnection, Context.BIND_AUTO_CREATE)) {
                 Log.d(LOG_TAG, "Bind to Service failed");
             }
         }
-
     }
 
     @Override
@@ -186,16 +188,12 @@ public class MainActivity extends ActionBarActivity implements MainActivityFragm
             unbindService(mConnection);
             mBound = false;
         }
-
-
     }
-
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_main, menu);
-
         mPlayActionButton = menu.findItem(R.id.now_playing_action_button);
 
         return true;
@@ -210,16 +208,14 @@ public class MainActivity extends ActionBarActivity implements MainActivityFragm
     @Override
     public void onResume() {
         super.onResume();
-
     }
 
     @Override
     public void onSaveInstanceState(Bundle saveInstanceState) {
         super.onSaveInstanceState(saveInstanceState);
 
-        saveInstanceState.putParcelableArrayList("TRACK_LIST", (ArrayList<TrackItemList>) mTracks);
-        saveInstanceState.putString("PREVIEW_URL", mTrackPreview_Url);
-
+        saveInstanceState.putParcelableArrayList(SAVED_TRACK_LIST, (ArrayList<TrackItemList>) mTracks);
+        saveInstanceState.putString(SAVED_PREVIEW_URL, mTrackPreview_Url);
     }
 
     @Override
@@ -242,7 +238,7 @@ public class MainActivity extends ActionBarActivity implements MainActivityFragm
                     PlaybackActivityFragment playbackActivityFragment = new PlaybackActivityFragment();
                     FragmentManager fragmentManager = getFragmentManager();
                     Bundle bundleFragment = new Bundle();
-                    bundleFragment.putBoolean("ARG_NOW_PLAYING", true);
+                    bundleFragment.putBoolean(FRAG_ARG_NOW_PLAYING, true);
 
                     playbackActivityFragment.setArguments(bundleFragment);
                     playbackActivityFragment.show(fragmentManager, "Play Now");
@@ -266,29 +262,18 @@ public class MainActivity extends ActionBarActivity implements MainActivityFragm
                     }
                 } else {
                     if (mPlaybackService.getPreviewUrl() != null && mPlaybackService.getPreviewUrl().length() != 0) {
-                        Intent sendIntent = new Intent();
-                        sendIntent.setAction(Intent.ACTION_SEND);
-                        sendIntent.putExtra(Intent.EXTRA_TEXT, mPlaybackService.getPreviewUrl());
-                        sendIntent.setType("text/plain");
-                        startActivity(Intent.createChooser(sendIntent, "SendTo"));
+                        sendShareIntent(mPlaybackService.getPreviewUrl());
                     } else {
                         Toast.makeText(this, "No Url found", Toast.LENGTH_SHORT).show();
                     }
-
                 }
             } else {
                 if (mPlaybackService.getPreviewUrl() != null && mPlaybackService.getPreviewUrl().length() != 0) {
-                    Intent sendIntent = new Intent();
-                    sendIntent.setAction(Intent.ACTION_SEND);
-                    sendIntent.putExtra(Intent.EXTRA_TEXT, mPlaybackService.getPreviewUrl());
-                    sendIntent.setType("text/plain");
-                    startActivity(Intent.createChooser(sendIntent, "SendTo"));
+                    sendShareIntent(mPlaybackService.getPreviewUrl());
                 } else {
                     Toast.makeText(this, "No Url found", Toast.LENGTH_SHORT).show();
                 }
-
             }
-
         }
 
         return super.onOptionsItemSelected(item);
@@ -311,9 +296,9 @@ public class MainActivity extends ActionBarActivity implements MainActivityFragm
     /* Create intent for TopTenActivity */
     private Intent makeTopTenIntent(MyArtist artist, ArrayList<TrackItemList> tracks) {
         Intent intent = new Intent(this, TopTenActivity.class);
-        intent.putExtra("INTENT_ARTIST_NAME", artist.name);
-        intent.putExtra("INTENT_ARTIST_IMAGE", artist.image);
-        intent.putParcelableArrayListExtra("TOP_TEN_LIST", tracks);
+        intent.putExtra(INTENT_ARTIST_NAME, artist.name);
+        intent.putExtra(INTENT_ARTIST_IMAGE, artist.image);
+        intent.putParcelableArrayListExtra(TOP_TEN_LIST, tracks);
 
         return intent;
     }
