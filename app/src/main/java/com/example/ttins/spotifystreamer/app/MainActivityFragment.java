@@ -202,9 +202,8 @@ public class MainActivityFragment extends Fragment {
     }
 
     protected void searchTextEnterClick(SearchView searchView) {
-        final SearchView localSearchView = searchView;
 
-        localSearchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
             @Override
             public boolean onQueryTextSubmit(String query) {
                 SpotifyApi api = new SpotifyApi();
@@ -235,53 +234,6 @@ public class MainActivityFragment extends Fragment {
 
             @Override
             public boolean onQueryTextChange(String newText) {
-                return false;
-            }
-        });
-    }
-
-    /* Search Button click handler (Enter button of the Soft Keyboard) */
-    protected void searchTextEnterClick(EditText editText) {
-
-        final EditText localEditText = editText;
-
-        localEditText.setOnKeyListener(new View.OnKeyListener() {
-            @Override
-            public boolean onKey(View v, int keyCode, KeyEvent event) {
-
-                // Preventing multiple clicks, using threshold of 2 seconds
-                if (SystemClock.elapsedRealtime() - mLastClickTime < 2000) {
-                    return false;
-                }
-                mLastClickTime = SystemClock.elapsedRealtime();
-
-                if ((event.getAction() == KeyEvent.ACTION_DOWN) && (keyCode == KeyEvent.KEYCODE_ENTER)) {
-                    SpotifyApi api = new SpotifyApi();
-                    SpotifyService spotify = api.getService();
-
-                    KeyboardUtil.hideKeyboard(getActivity());
-
-                    spotify.searchArtists(localEditText.getText().toString(), new Callback<ArtistsPager>() {
-                        @Override
-                        public void success(ArtistsPager artistsPager, Response response) {
-                            mResultListArtist = artistsPager.artists.items;
-
-                            getActivity().runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    showArtists(mResultListArtist);
-                                }
-                            });
-                        }
-
-                        @Override
-                        public void failure(RetrofitError error) {
-                            Log.d("Artist failure", error.toString());
-                        }
-                    });
-                    return true;
-                }
-
                 return false;
             }
         });

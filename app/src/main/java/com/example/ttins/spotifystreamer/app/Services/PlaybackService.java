@@ -74,7 +74,7 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
     private Intent notificationActionToIntent(String sAction) {
         Intent intent = new Intent(getApplicationContext(), PlaybackService.class);
 
-        if (sAction.equals(ACTION_STOP))
+        if (sAction.equals(ACTION_PLAY))
             intent.setAction(ACTION_PLAY);
         else
             intent.setAction(ACTION_STOP);
@@ -83,7 +83,7 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
     }
 
     private int setPlayStopButtonResource(String sAction) {
-        if (sAction.equals(ACTION_STOP))
+        if (sAction.equals(ACTION_PLAY))
             return android.R.drawable.ic_media_play;
 
         return android.R.drawable.ic_media_pause;
@@ -91,7 +91,10 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
 
     private void makeNotification(boolean isEnabled, RemoteViews remoteView, NotificationCompat.Builder builder, NotificationManager notificationManager, int notificationId, String sAction) {
 
-        if(isEnabled) {
+        if(isEnabled && mTrackItemList != null) {
+
+            if (mTrackItemList.size() == 0 )
+                return;
 
             builder.setContentTitle(mTrackItemList.get(mPosition).getName())
                     .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
@@ -217,7 +220,7 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
                 mCallback.onMediaCompleted();
                 Log.d(LOG_TAG, "Media completed");
 
-                makeNotification(mEnableNotify, mRemoteView, mBuilder, mNotificationManager, mNotificationId, ACTION_STOP);
+                makeNotification(mEnableNotify, mRemoteView, mBuilder, mNotificationManager, mNotificationId, ACTION_PLAY);
 
             }
         });
@@ -343,7 +346,7 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
                 mMediaPlayer.prepareAsync();
 
             //TODO
-            makeNotification(mEnableNotify, mRemoteView, mBuilder, mNotificationManager, mNotificationId, ACTION_PLAY);
+            makeNotification(mEnableNotify, mRemoteView, mBuilder, mNotificationManager, mNotificationId, ACTION_STOP);
 
 
         } else if (intent.getAction().equals(ACTION_PLAY_RESUME)) {
@@ -363,7 +366,7 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
                 mCallback.onMediaPause();
 
                 //TODO
-                makeNotification(mEnableNotify, mRemoteView, mBuilder, mNotificationManager, mNotificationId, ACTION_STOP);
+                makeNotification(mEnableNotify, mRemoteView, mBuilder, mNotificationManager, mNotificationId, ACTION_PLAY);
 
             }
 

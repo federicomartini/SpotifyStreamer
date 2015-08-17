@@ -55,6 +55,7 @@ public class MainActivity extends ActionBarActivity implements MainActivityFragm
     private PlaybackService mPlaybackService;
     private boolean mBound;
     MenuItem mPlayActionButton;
+    private boolean mShareIntentRequest;
 
 
     private ServiceConnection mConnection = new ServiceConnection() {
@@ -66,10 +67,10 @@ public class MainActivity extends ActionBarActivity implements MainActivityFragm
 
             Log.d(LOG_TAG, "Bound to Playback service");
 
-            if (mPlaybackService.getPreviewUrl() != null && mPlaybackService.getPreviewUrl().length() != 0) {
+            if (mShareIntentRequest) {
+                mShareIntentRequest = false;
                 sendShareIntent(mPlaybackService.getPreviewUrl());
             }
-
         }
 
         @Override
@@ -82,11 +83,14 @@ public class MainActivity extends ActionBarActivity implements MainActivityFragm
     void sendShareIntent(String previewUrl) {
         Intent sendIntent = new Intent();
 
-        sendIntent.setAction(Intent.ACTION_SEND);
-        sendIntent.putExtra(Intent.EXTRA_TEXT, previewUrl);
-        sendIntent.setType("text/plain");
-        startActivity(Intent.createChooser(sendIntent, getResources().getString(R.string.share_intent_menu_text)));
-
+        if (previewUrl != null && previewUrl.length() != 0) {
+            sendIntent.setAction(Intent.ACTION_SEND);
+            sendIntent.putExtra(Intent.EXTRA_TEXT, previewUrl);
+            sendIntent.setType("text/plain");
+            startActivity(Intent.createChooser(sendIntent, getResources().getString(R.string.share_intent_menu_text)));
+        } else {
+            Toast.makeText(this, "No Url found", Toast.LENGTH_SHORT).show();
+        }
     }
 
     @Override
@@ -171,12 +175,6 @@ public class MainActivity extends ActionBarActivity implements MainActivityFragm
     @Override
     public void onStart() {
         super.onStart();
-        if (null == mPlaybackService && !mTwoPane) {
-            Intent intent = new Intent(this, PlaybackService.class);
-            if (!bindService(intent, mConnection, Context.BIND_AUTO_CREATE)) {
-                Log.d(LOG_TAG, "Bind to Service failed");
-            }
-        }
     }
 
     @Override
@@ -253,29 +251,24 @@ public class MainActivity extends ActionBarActivity implements MainActivityFragm
         }
 
         if (id == R.id.menu_item_share) {
-            if (mTwoPane) {
-                if (null == mPlaybackService) {
-                    Intent intent = new Intent(this, PlaybackService.class);
-                    if (!bindService(intent, mConnection, Context.BIND_AUTO_CREATE)) {
-                        Log.d(LOG_TAG, "Bind to Service failed");
-                    }
-                } else {
-                    if (mPlaybackService.getPreviewUrl() != null && mPlaybackService.getPreviewUrl().length() != 0) {
-                        sendShareIntent(mPlaybackService.getPreviewUrl());
-                    } else {
-                        Toast.makeText(this, "No Url found", Toast.LENGTH_SHORT).show();
-                    }
-                }
+            if (null == mPlaybackService) {
+                if(connectToService(mConnection)) {mShareIntentRequest = true;}
             } else {
-                if (mPlaybackService.getPreviewUrl() != null && mPlaybackService.getPreviewUrl().length() != 0) {
-                    sendShareIntent(mPlaybackService.getPreviewUrl());
-                } else {
-                    Toast.makeText(this, "No Url found", Toast.LENGTH_SHORT).show();
-                }
+                sendShareIntent(mPlaybackService.getPreviewUrl());
             }
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    private boolean connectToService(ServiceConnection connection) {
+        Intent intent = new Intent(this, PlaybackService.class);
+        if (!bindService(intent, connection, Context.BIND_AUTO_CREATE)) {
+            Log.d(LOG_TAG, "Bind to Service failed");
+            return false;
+        }
+
+        return true;
     }
 
     /* Customize toolbar */
