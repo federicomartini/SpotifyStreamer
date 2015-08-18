@@ -8,6 +8,8 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.net.wifi.WifiManager;
 import android.os.AsyncTask;
 import android.os.Binder;
@@ -15,6 +17,7 @@ import android.os.IBinder;
 import android.os.PowerManager;
 import android.preference.PreferenceManager;
 import android.support.v4.app.NotificationCompat;
+import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.widget.RemoteViews;
 
@@ -49,6 +52,8 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
     private static final int MP_STATUS_PLAYING = 2;
     private static final int MP_STATUS_PAUSE = 3;
     private static final int MP_STATUS_COMPLETED = 4;
+    private static final int MP_STATUS_PREPARED = 5;
+
 
     MediaPlayer mMediaPlayer;
     WifiManager.WifiLock mWifiLock;
@@ -61,6 +66,7 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
     public OnPlaybackServiceListener mCallback;
     private boolean mIsCompleted;
     private boolean mIsStarted;
+    private boolean mIsPrepared;
     int mNotificationId = 001;
     NotificationCompat.Builder mBuilder;
     NotificationManager mNotificationManager;
@@ -165,31 +171,43 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
     private void setMediaPlayerStatus(int status) {
 
         switch (status) {
+            case MP_STATUS_PREPARED:
+                mIsPrepared=true;
+                mIsPaused=false;
+                mIsStarted=false;
+                mIsCompleted=false;
+                Log.d(LOG_TAG, "MediaPlayer Status PREPARED");
+                break;
             case MP_STATUS_COMPLETED:
+                mIsPrepared=true;
                 mIsPaused=false;
                 mIsStarted=false;
                 mIsCompleted=true;
                 Log.d(LOG_TAG, "MediaPlayer Status COMPLETED");
                 break;
             case MP_STATUS_PLAYING:
+                mIsPrepared=true;
                 mIsPaused=false;
                 mIsStarted=true;
                 mIsCompleted=false;
                 Log.d(LOG_TAG, "MediaPlayer Status PLAY");
                 break;
             case MP_STATUS_PAUSE:
+                mIsPrepared=true;
                 mIsPaused=true;
                 mIsStarted=false;
                 mIsCompleted=false;
                 Log.d(LOG_TAG, "MediaPlayer Status PAUSE");
                 break;
             case MP_STATUS_INIT:
+                mIsPrepared=false;
                 mIsPaused=false;
                 mIsStarted=false;
                 mIsCompleted=false;
                 Log.d(LOG_TAG, "MediaPlayer Status INIT");
                 break;
             case MP_STATUS_OFF:
+                mIsPrepared=false;
                 mIsPaused=false;
                 mIsStarted=false;
                 mIsCompleted=false;
@@ -310,7 +328,6 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
                 Log.d(LOG_TAG, "No files found on trying to streaming audio clip");
             }
 
-            //TODO
             makeNotification(mEnableNotify, mRemoteView, mBuilder, mNotificationManager, mNotificationId, ACTION_NEXT);
 
         } else if (intent.getAction().equals(ACTION_PREV)) {
@@ -329,7 +346,6 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
                 Log.d(LOG_TAG, "No files found on trying to streaming audio clip");
             }
 
-            //TODO
             makeNotification(mEnableNotify, mRemoteView, mBuilder, mNotificationManager, mNotificationId, ACTION_PREV);
 
         } else if (intent.getAction().equals(ACTION_PLAY)) {
@@ -342,10 +358,13 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
             } else if (mIsStarted) {
                 //Do nothing
             }
-            else
-                mMediaPlayer.prepareAsync();
+            else {
+                if (!mIsPrepared) {
+                    mMediaPlayer.prepareAsync();
+                    setMediaPlayerStatus(MP_STATUS_PREPARED);
+                }
+            }
 
-            //TODO
             makeNotification(mEnableNotify, mRemoteView, mBuilder, mNotificationManager, mNotificationId, ACTION_STOP);
 
 
@@ -387,11 +406,18 @@ public class PlaybackService extends Service implements MediaPlayer.OnPreparedLi
 
 
     public void playMusicInBackground(MediaPlayer mediaPlayer) {
+
         mediaPlayer.start();
         setMediaPlayerStatus(MP_STATUS_PLAYING);
         mCallback.onMediaPlaying();
 
-        mCallback.onTrackPlaying(mTrackItemList.get(mPosition).getAlbumName(), mTrackItemList.get(mPosition).getAlbumImages().get(0), mTrackItemList.get(mPosition).getName(), mTrackItemList.get(mPosition).getArtists(), mMediaPlayer.getDuration());
+        mCallback.onTrackPlaying(mTrackItemList.get(mPosition).getAlbumName(),
+                mTrackItemList.get(mPosition).getAlbumImages().get(0),
+                mTrackItemList.get(mPosition).getName(),
+                mTrackItemList.get(mPosition).getArtists(),
+                mMediaPlayer.getDuration());
+
+
     }
 
     public int getDuration() {
