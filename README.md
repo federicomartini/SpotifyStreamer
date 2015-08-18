@@ -1,5 +1,5 @@
 # SpotifyStreamer
-Spotify Streamer 1.0 releases. 
+Spotify Streamer 1.3 releases. 
 
 ## Build
 Sources have been compiled with Android Studio 1.3.1, so it's enough if you download repository files
